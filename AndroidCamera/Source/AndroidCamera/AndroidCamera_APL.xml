@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--ARToolKit plugin additions-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- init section is always evaluated once per architecture -->
+	<init>
+		<log text="AndroidCamera init"/>
+	</init>
+	
+	<androidManifestUpdates>
+		<addPermission android:name="android.permission.CAMERA"/>
+		<addFeature android:name="android.hardware.camera"/>
+		<addFeature android:name="android.hardware.camera.autofocus"/>
+	</androidManifestUpdates>
+
+	<!-- optional additions to the GameActivity imports in GameActivity.java -->
+	<gameActivityImportAdditions>
+		<insert>
+import android.widget.Toast;
+import android.hardware.Camera;
+import android.hardware.Camera.CameraInfo;
+import android.hardware.Camera.Parameters;
+import android.hardware.Camera.PreviewCallback;
+import android.graphics.SurfaceTexture;
+import android.graphics.ImageFormat;
+import android.graphics.PixelFormat;
+import java.util.List; 
+import java.io.IOException;
+import android.util.Log;
+		</insert>
+	</gameActivityImportAdditions>
+	
+	<gameActivityClassAdditions>
+		<insert>
+			static String msg = "yes i am a rock!";
+			SurfaceTexture surfaceTexture;
+			Camera camera;
+			public native boolean nativeGetFrameData(int frameWidth, int frameHeight, byte[] data);
+			
+			public void AndroidThunkJava_Toast()
+			{
+				try
+				{
+					_activity.runOnUiThread(new Runnable()
+					{
+						public void run()
+						{
+							Toast.makeText(_activity.getApplicationContext(), "cam o yeah!", Toast.LENGTH_SHORT).show();
+						}
+					});
+				}
+				catch (Exception e)
+				{
+					Log.debug("Toast failed with exception " + e.getMessage());
+				}
+			}
+			
+			public void AndroidThunkJava_startCamera()
+			{
+				surfaceTexture = new SurfaceTexture(10);
+				surfaceTexture.setDefaultBufferSize(320,240);
+				camera = Camera.open();
+				
+				
+				try { 
+					camera.setPreviewTexture(surfaceTexture);
+				} catch (IOException t) {
+					android.util.Log.e("ARToolKitLog", "Cannot set preview texture target!", t);
+				} 
+				
+				Parameters cameraParam = camera.getParameters();
+
+				cameraParam.setPreviewFormat(ImageFormat.NV21);
+				cameraParam.setPreviewSize(320, 240);
+				camera.setParameters(cameraParam);
+				
+				camera.setPreviewCallback(new PreviewCallback() {
+					@Override
+					public void onPreviewFrame(byte[] data, Camera camera) {
+						int Height = camera.getParameters().getPreviewSize().height;
+						int Width = camera.getParameters().getPreviewSize().width;
+						nativeGetFrameData(Width, Height, data);
+					}
+				});
+
+				camera.startPreview();
+			}
+			
+			public void AndroidThunkJava_stopCamera()
+			{
+				if (camera != null) 
+				{
+					camera.stopPreview();
+					camera.release();
+					camera = null;
+				}
+			}
+		</insert>
+	</gameActivityClassAdditions>
+
+	<!-- optional additions to GameActivity onCreate in GameActivity.java -->
+	<gameActivityOnCreateAdditions>
+		<insert>
+		//Toast.makeText(this,msg,Toast.LENGTH_LONG).show();
+		//AndroidThunkJava_Toast();
+		</insert>
+	</gameActivityOnCreateAdditions>
+
+
+</root>
