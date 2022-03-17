@@ -2,6 +2,8 @@
 
 #include "AndroidCamera.h"
 #include "AndroidCameraPermission.h"
+#include "ImageFormatUtils.h"
+#include "ScopedTimer.h"
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidApplication.h"
@@ -20,8 +22,12 @@ static bool newFrame = false;
 static unsigned char* rawDataAndroid;
 #endif
 
+static int WIDTH = 640;
+static int HEIGHT = 640;
 
 #define LOCTEXT_NAMESPACE "FAndroidCameraModule"
+
+DEFINE_LOG_CATEGORY(LogCamera);
 
 void FAndroidCameraModule::StartupModule()
 {
@@ -51,7 +57,7 @@ int SetupJNICamera(JNIEnv* env)
 
 	ENV = env;
 
-	AndroidThunkJava_startCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_startCamera", "()V", false);
+	AndroidThunkJava_startCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_startCamera", "(II)V", false);
 	if (!AndroidThunkJava_startCamera)
 	{
 		__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "ERROR: AndroidThunkJava_startCamera Method cant be found T_T ");
@@ -74,7 +80,7 @@ int SetupJNICamera(JNIEnv* env)
 void  AndroidThunkCpp_startCamera()
 {
 	if (!AndroidThunkJava_startCamera || !ENV) return;
-	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_startCamera);
+	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_startCamera, WIDTH, HEIGHT);
 }
 
 void AndroidThunkCpp_stopCamera()
@@ -83,13 +89,26 @@ void AndroidThunkCpp_stopCamera()
 	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_stopCamera);
 }
 
-extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* LocalJNIEnv, jobject LocalThiz, jint frameWidth, jint frameHeight, jbyteArray data)
+extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* LocalJNIEnv, jobject LocalThiz, 
+	jobject y_byte_buffer, jint y_row_stride, jint y_pixel_stride,
+	jobject u_byte_buffer, jint u_row_stride, jint u_pixel_stride,
+	jobject v_byte_buffer, jint v_row_stride, jint v_pixel_stride,
+	jint width, jint height)
 {
-	//get the new frame
-	int length = LocalJNIEnv->GetArrayLength(data);
-	unsigned char* buffer = new unsigned char[length];
-	LocalJNIEnv->GetByteArrayRegion(data, 0, length, reinterpret_cast<jbyte*>(buffer));
-	rawDataAndroid = buffer;
+	auto y_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(y_byte_buffer));
+	auto u_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(u_byte_buffer));
+	auto v_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(v_byte_buffer));
+
+	if (rawDataAndroid == nullptr) {
+		rawDataAndroid = new unsigned char[width * height * 4];
+	}
+
+	{
+		ScopedTimer(TEXT("YUV to RGB"));
+		UE_LOG(LogCamera, Log, TEXT("Width %d Height %d Stride %d %d %d"), width, height, y_row_stride, u_row_stride, u_pixel_stride);
+		ImageFormatUtils::YUV420ToARGB8888(y_buffer, u_buffer, v_buffer, width, height, y_row_stride, u_row_stride, u_pixel_stride, (int*)rawDataAndroid);
+	}
+
 	newFrame = true;
 	//__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "new frame arrive ^_^");
 	return JNI_TRUE;

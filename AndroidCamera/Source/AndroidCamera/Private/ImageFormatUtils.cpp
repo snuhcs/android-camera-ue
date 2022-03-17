@@ -49,7 +49,7 @@ namespace ImageFormatUtils
         return 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
     }
 
-    void YUV420ToARGB8888(char* yData, char* uData, char* vData, int Width, int Height, int yRowStride, int uvRowStride, int uvPixelStride, int* Out)
+    void YUV420ToARGB8888(unsigned char* yData, unsigned char* uData, unsigned char* vData, int Width, int Height, int yRowStride, int uvRowStride, int uvPixelStride, int* Out)
     {
         int yp = 0;
         for (int j = 0; j < Height; j++) {

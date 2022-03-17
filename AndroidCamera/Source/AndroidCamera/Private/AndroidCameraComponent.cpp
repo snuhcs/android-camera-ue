@@ -89,17 +89,9 @@ void UAndroidCameraComponent::updateTexture(void* data)
 	RegionData->SrcPitch = (uint32)(4 * WIDTH);
 	RegionData->SrcBpp = 4;
 
-	char* yuv420sp = (char*)data;
-	int* rgb = new int[WIDTH * HEIGHT];
 	if (!rawDataAndroid) return;
 
-	{
-		ScopedTimer(TEXT("YUV to RGB"));
-		ImageFormatUtils::YUV420SPToARGB8888(yuv420sp, WIDTH, HEIGHT, rgb);
-		UE_LOG(LogCamera, Log, TEXT("%d %d"), WIDTH, HEIGHT);
-	}
-
-	RegionData->SrcData = (uint8*)rgb;
+	RegionData->SrcData = (uint8*)rawDataAndroid;
 
 	bool bFreeData = false;
 
@@ -107,7 +99,6 @@ void UAndroidCameraComponent::updateTexture(void* data)
 	ENQUEUE_RENDER_COMMAND(UpdateTextureRegionsData)(
 		[RegionData, bFreeData](FRHICommandListImmediate& RHICmdList)
 	{
-		ScopedTimer(TEXT("UpdateTextureRegionsData"));
 		for (uint32 RegionIndex = 0; RegionIndex < RegionData->NumRegions; ++RegionIndex)
 		{
 			int32 CurrentFirstMip = RegionData->Texture2DResource->GetCurrentFirstMip();
@@ -131,8 +122,6 @@ void UAndroidCameraComponent::updateTexture(void* data)
 		}
 		delete RegionData;
 	});
-
-	delete[] rgb;
 
 #endif
 }

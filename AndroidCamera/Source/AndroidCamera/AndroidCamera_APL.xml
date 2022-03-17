@@ -12,98 +12,74 @@
 		<addFeature android:name="android.hardware.camera.autofocus"/>
 	</androidManifestUpdates>
 
+  <prebuildCopies> 
+    <copyDir src="$S(PluginDir)/Java" dst="$S(BuildDir)/src/com/dostos" /> 
+  </prebuildCopies>
+
 	<!-- optional additions to the GameActivity imports in GameActivity.java -->
 	<gameActivityImportAdditions>
 		<insert>
-import android.widget.Toast;
-import android.hardware.Camera;
-import android.hardware.Camera.CameraInfo;
-import android.hardware.Camera.Parameters;
-import android.hardware.Camera.PreviewCallback;
-import android.graphics.SurfaceTexture;
-import android.graphics.ImageFormat;
-import android.graphics.PixelFormat;
-import java.util.List; 
-import java.io.IOException;
-import android.util.Log;
-		</insert>
+      
+			import android.media.Image;
+			import android.media.ImageReader;
+      import android.util.Size;
+      import com.dostos.CameraConnectionFragment;
+    </insert>
 	</gameActivityImportAdditions>
 	
 	<gameActivityClassAdditions>
 		<insert>
-			static String msg = "yes i am a rock!";
-			SurfaceTexture surfaceTexture;
-			Camera camera;
-			public native boolean nativeGetFrameData(int frameWidth, int frameHeight, byte[] data);
+      public native boolean nativeGetFrameData(
+      		ByteBuffer y, int row_stride_y, int pixel_stride_y,
+					ByteBuffer u, int row_stride_u, int pixel_stride_u,
+					ByteBuffer v, int row_stride_v, int pixel_stride_v,
+					int width, int height);
 			
-			public void AndroidThunkJava_Toast()
-			{
-				try
-				{
-					_activity.runOnUiThread(new Runnable()
-					{
-						public void run()
-						{
-							Toast.makeText(_activity.getApplicationContext(), "cam o yeah!", Toast.LENGTH_SHORT).show();
-						}
-					});
-				}
-				catch (Exception e)
-				{
-					Log.debug("Toast failed with exception " + e.getMessage());
-				}
-			}
-			
-			public void AndroidThunkJava_startCamera()
-			{
-				surfaceTexture = new SurfaceTexture(10);
-				surfaceTexture.setDefaultBufferSize(320,240);
-				camera = Camera.open();
-				
-				
-				try { 
-					camera.setPreviewTexture(surfaceTexture);
-				} catch (IOException t) {
-					android.util.Log.e("ARToolKitLog", "Cannot set preview texture target!", t);
-				} 
-				
-				Parameters cameraParam = camera.getParameters();
+      CameraConnectionFragment cameraConnectionFragment = null;
 
-				cameraParam.setPreviewFormat(ImageFormat.NV21);
-				cameraParam.setPreviewSize(320, 240);
-				camera.setParameters(cameraParam);
-				
-				camera.setPreviewCallback(new PreviewCallback() {
-					@Override
-					public void onPreviewFrame(byte[] data, Camera camera) {
-						int Height = camera.getParameters().getPreviewSize().height;
-						int Width = camera.getParameters().getPreviewSize().width;
-						nativeGetFrameData(Width, Height, data);
-					}
-				});
+      public void AndroidThunkJava_startCamera(int desiredPreviewWidth, int desiredPreviewHeight)
+      {
+		  cameraConnectionFragment = CameraConnectionFragment.newInstance(
+				  new CameraConnectionFragment.ConnectionCallback() {
+					  @Override
+					  public void onPreviewSizeChosen(Size size, int cameraRotation) {
 
-				camera.startPreview();
-			}
-			
-			public void AndroidThunkJava_stopCamera()
-			{
-				if (camera != null) 
-				{
-					camera.stopPreview();
-					camera.release();
-					camera = null;
-				}
-			}
-		</insert>
+					  }
+				  },
+				  new ImageReader.OnImageAvailableListener() {
+					  @Override
+					  public void onImageAvailable(ImageReader imageReader) {
+						Image image = imageReader.acquireLatestImage();
+					  	final Image.Plane[] planes = image.getPlanes();
+						nativeGetFrameData(
+								planes[0].getBuffer(), planes[0].getRowStride(), planes[0].getPixelStride(),
+								planes[1].getBuffer(), planes[1].getRowStride(), planes[1].getPixelStride(),
+								planes[2].getBuffer(), planes[2].getRowStride(), planes[2].getPixelStride(),
+								image.getWidth(), image.getHeight()
+						);
+            image.close();
+					  }
+				  }, new Size(desiredPreviewWidth, desiredPreviewHeight)
+
+		  );
+
+		  getFragmentManager().beginTransaction().attach(cameraConnectionFragment).commit();
+      };
+
+      public void AndroidThunkJava_stopCamera()
+      {
+      	if (cameraConnectionFragment != null) {
+          getFragmentManager().beginTransaction().remove(cameraConnectionFragment).commit();
+          cameraConnectionFragment = null;
+		    }
+      }
+    </insert>
 	</gameActivityClassAdditions>
 
 	<!-- optional additions to GameActivity onCreate in GameActivity.java -->
 	<gameActivityOnCreateAdditions>
 		<insert>
-		//Toast.makeText(this,msg,Toast.LENGTH_LONG).show();
-		//AndroidThunkJava_Toast();
 		</insert>
 	</gameActivityOnCreateAdditions>
-
 
 </root>
