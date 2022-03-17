@@ -12,10 +12,7 @@ private:
 	bool bActive = false;
 	TArray<FColor> rawData;
 	FUpdateTextureRegion2D *echoUpdateTextureRegion;
-	int32 width = 320;
-	int32 height = 240;
 
-	int YUVtoRGB(int y, int u, int v);
 	const float frameRate = 30.f;
 	float timer = 0;
 
