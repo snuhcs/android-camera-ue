@@ -20,10 +20,11 @@ static jmethodID AndroidThunkJava_startCamera;
 static jmethodID AndroidThunkJava_stopCamera;
 static bool newFrame = false;
 static unsigned char* rawDataAndroid;
+static unsigned char* yuvDataAndroid;
 #endif
 
-static int WIDTH = 640;
-static int HEIGHT = 640;
+static int WIDTH = 512;
+static int HEIGHT = 512;
 
 #define LOCTEXT_NAMESPACE "FAndroidCameraModule"
 
@@ -98,9 +99,15 @@ extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* L
 	auto y_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(y_byte_buffer));
 	auto u_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(u_byte_buffer));
 	auto v_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(v_byte_buffer));
-
+    
 	if (rawDataAndroid == nullptr) {
 		rawDataAndroid = new unsigned char[width * height * 4];
+		WIDTH = width;
+		HEIGHT = height;
+	}
+
+	if (yuvDataAndroid == nullptr) {
+		yuvDataAndroid = new unsigned char[width * height + (width * height / 2)];
 	}
 
 	{
@@ -108,6 +115,10 @@ extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* L
 		UE_LOG(LogCamera, Log, TEXT("Width %d Height %d Stride %d %d %d"), width, height, y_row_stride, u_row_stride, u_pixel_stride);
 		ImageFormatUtils::YUV420ToARGB8888(y_buffer, u_buffer, v_buffer, width, height, y_row_stride, u_row_stride, u_pixel_stride, (int*)rawDataAndroid);
 	}
+
+	std::memcpy(yuvDataAndroid, y_buffer, width * height);
+	std::memcpy(yuvDataAndroid + width * height, u_buffer, (width * height) / 4);
+	std::memcpy(yuvDataAndroid + width * height + (width * height) / 4, v_buffer, (width * height) / 4);
 
 	newFrame = true;
 	//__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "new frame arrive ^_^");

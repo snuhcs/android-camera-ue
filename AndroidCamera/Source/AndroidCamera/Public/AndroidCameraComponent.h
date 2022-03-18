@@ -31,6 +31,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Android)
 		void shutDownCamera();
+
+	UFUNCTION(BlueprintCallable, Category = Android)
+		static UTexture2D* GetRawTexture(UTexture2D* texture);
 };
 
 // Region Data struct

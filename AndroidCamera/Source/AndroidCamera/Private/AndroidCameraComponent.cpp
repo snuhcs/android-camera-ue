@@ -2,6 +2,10 @@
 #include "AndroidCamera.h"
 #include "ImageFormatUtils.h"
 #include "ScopedTimer.h"
+#include "Rendering/Texture2DResource.h"
+#include "HAL/FileManager.h"
+
+#include <fstream>
 
 #if PLATFORM_ANDROID
 extern void AndroidThunkCpp_startCamera();
@@ -38,6 +42,55 @@ void UAndroidCameraComponent::shutDownCamera()
 		AndroidThunkCpp_stopCamera();
 #endif
 	}
+}
+
+UTexture2D* UAndroidCameraComponent::GetRawTexture(UTexture2D* texture)
+{
+	const int inputWidth = texture->Resource->GetSizeX();
+	const int inputHeight = texture->Resource->GetSizeY();
+
+	const int outputWidth = 512;
+	const int outputHeight = 512;
+	UTexture2D* newTexture = UTexture2D::CreateTransient(outputWidth, outputHeight);
+
+	FUpdateTextureRegion2D* updateRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, outputWidth, outputHeight);
+	FUpdateTextureRegionsData* RegionData = new FUpdateTextureRegionsData;
+	RegionData->Texture2DResource = (FTexture2DResource*)texture->Resource;
+	RegionData->MipIndex = 0;
+	RegionData->NumRegions = 1;
+	RegionData->Regions = updateRegion;
+	RegionData->SrcPitch = (uint32)(4 * inputWidth);
+	RegionData->SrcBpp = 4;
+	RegionData->SrcData = (uint8*)texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
+	
+	// call the RHIUpdateTexture2D to refresh the texture with new info
+	ENQUEUE_RENDER_COMMAND(UpdateTextureRegionsData)(
+		[RegionData, updateRegion](FRHICommandListImmediate& RHICmdList)
+		{
+			for (uint32 RegionIndex = 0; RegionIndex < RegionData->NumRegions; ++RegionIndex)
+			{
+				int32 CurrentFirstMip = RegionData->Texture2DResource->GetCurrentFirstMip();
+				if (RegionData->MipIndex >= CurrentFirstMip)
+				{
+					RHIUpdateTexture2D(
+						RegionData->Texture2DResource->GetTexture2DRHI(),
+						RegionData->MipIndex - CurrentFirstMip,
+						RegionData->Regions[RegionIndex],
+						RegionData->SrcPitch,
+						RegionData->SrcData
+						+ RegionData->Regions[RegionIndex].SrcY * RegionData->SrcPitch
+						+ RegionData->Regions[RegionIndex].SrcX * RegionData->SrcBpp
+					);
+				}
+			}
+			delete updateRegion;
+			delete RegionData;
+		});
+
+	texture->PlatformData->Mips[0].BulkData.Unlock();
+
+
+	return texture;
 }
 
 // Called every frame
@@ -92,6 +145,37 @@ void UAndroidCameraComponent::updateTexture(void* data)
 	if (!rawDataAndroid) return;
 
 	RegionData->SrcData = (uint8*)rawDataAndroid;
+
+
+	UE_LOG(LogCamera, Display, TEXT("Input texture width %d height %d"), WIDTH, HEIGHT);
+	FString path = FString(TEXT("sdcard/UE4Game/BandExample/image.bin"));
+	FString yuvPath = FString(TEXT("sdcard/UE4Game/BandExample/yuvImage.bin"));
+
+	{
+		std::ofstream file;
+		file.open(TCHAR_TO_ANSI(*path), std::ios::binary);
+		if (file.is_open()) {
+			file.write((char*)rawDataAndroid, WIDTH * HEIGHT * 4);
+			file.close();
+			UE_LOG(LogCamera, Display, TEXT("Write texture to %s"), *path);
+		}
+		else {
+			UE_LOG(LogCamera, Display, TEXT("Failed to write texture to %s"), *path);
+		}
+	}
+
+	{
+		std::ofstream file;
+		file.open(TCHAR_TO_ANSI(*yuvPath), std::ios::binary);
+		if (file.is_open()) {
+			file.write((char*)yuvDataAndroid, WIDTH * HEIGHT + (WIDTH * HEIGHT) / 2);
+			file.close();
+			UE_LOG(LogCamera, Display, TEXT("Write texture to %s"), *path);
+		}
+		else {
+			UE_LOG(LogCamera, Display, TEXT("Failed to write texture to %s"), *path);
+		}
+	}
 
 	bool bFreeData = false;
 
