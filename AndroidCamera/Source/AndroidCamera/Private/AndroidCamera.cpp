@@ -2,6 +2,7 @@
 
 #include "AndroidCamera.h"
 #include "AndroidCameraPermission.h"
+#include "AndroidCameraComponent.h"
 #include "ImageFormatUtils.h"
 #include "ScopedTimer.h"
 
@@ -11,20 +12,54 @@
 #include "Rendering/Texture2DResource.h"
 #include <android/log.h>
 
-#define LOG_TAG "CameraLOG"
+#define LOG_TAG "AndroidCamera"
 
-int SetupJNICamera(JNIEnv* env);
-JNIEnv* ENV = NULL;
-static jmethodID jToast;
-static jmethodID AndroidThunkJava_startCamera;
-static jmethodID AndroidThunkJava_stopCamera;
-static bool newFrame = false;
-static unsigned char* rawDataAndroid;
-static unsigned char* yuvDataAndroid;
+void  AndroidThunkCpp_Camera_Start(int DesiredWidth, int DesiredHeight)
+{
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+	{
+		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_Camera_Start", "(II)V", false);
+		FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, Method, DesiredWidth, DesiredHeight);
+	}
+}
+
+void AndroidThunkCpp_Camera_Stop(int CameraId)
+{
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+	{
+		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_Camera_Stop", "(I)V", false);
+		FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, Method, CameraId);
+	}
+}
+
+extern "C" void Java_com_epicgames_ue4_GameActivity_OnCameraStart(JNIEnv * LocalJNIEnv, jobject LocalThiz, jint CameraId, jint PreviewWidth, jint PreviewHeight, jint CameraRotation)
+{
+	FAndroidCameraModule::Get().ActivateComponent(CameraId, PreviewWidth, PreviewHeight, CameraRotation);
+}
+
+extern "C" bool Java_com_epicgames_ue4_GameActivity_OnImageAvailable(JNIEnv * LocalJNIEnv, jobject LocalThiz,
+	jint CameraId,
+	jobject YByteBuffer, jint YRowStride, jint YPixelStride,
+	jobject UByteBuffer, jint URowStride, jint UPixelStride,
+	jobject VByteBuffer, jint VRowStride, jint VPixelStride,
+	jint Width, jint Height)
+{
+	auto Y = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(YByteBuffer));
+	auto U = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(UByteBuffer));
+	auto V = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(VByteBuffer));
+
+	if (UAndroidCameraComponent* Component = FAndroidCameraModule::Get().GetComponent(CameraId))
+	{
+		Component->OnImageAvailable(Y, U, V, YRowStride, URowStride, VRowStride, YPixelStride, UPixelStride, VPixelStride);
+		return JNI_TRUE;
+	}
+	else
+	{
+		return JNI_FALSE;
+	}
+}
+
 #endif
-
-static int WIDTH = 512;
-static int HEIGHT = 512;
 
 #define LOCTEXT_NAMESPACE "FAndroidCameraModule"
 
@@ -35,8 +70,6 @@ void FAndroidCameraModule::StartupModule()
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 #if PLATFORM_ANDROID
 	check_android_permission("CAMERA");
-	JNIEnv* env = FAndroidApplication::GetJavaEnv();
-	SetupJNICamera(env);
 #endif
 }
 
@@ -44,85 +77,67 @@ void FAndroidCameraModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-	
+	for (auto& IdComponents : IdToComponents)
+	{
+		UnregisterComponent(IdComponents.first);
+	}
+}
+
+FAndroidCameraModule& FAndroidCameraModule::Get()
+{
+	return *reinterpret_cast<FAndroidCameraModule*>(FModuleManager::Get().GetModule("AndroidCamera"));
+}
+
+void FAndroidCameraModule::RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight)
+{
+	PendingComponents.push(&Component);
+	// TODO(dostos): Pass token to find corresponding OnCameraStart for multiple camera support 
+#if PLATFORM_ANDROID
+	AndroidThunkCpp_Camera_Start(DesiredWidth, DesiredHeight);
+#endif
+
+}
+
+void FAndroidCameraModule::ActivateComponent(int CameraId, int PreviewWidth, int PreviewHeight, int CameraRotation)
+{
+	if (PendingComponents.size())
+	{
+		UAndroidCameraComponent* Component = PendingComponents.front();
+		PendingComponents.pop();
+		Component->ActivateComponent(CameraId, PreviewWidth, PreviewHeight, CameraRotation);
+		IdToComponents.insert({ CameraId, Component });
+	}
+	else
+	{
+		UE_LOG(LogCamera, Display, TEXT("Something went wrong. Cannot find pending component for id %d"), CameraId);
+	}
+}
+
+void FAndroidCameraModule::UnregisterComponent(int CameraId)
+{
+	if (UAndroidCameraComponent* Component = GetComponent(CameraId))
+	{
+		IdToComponents.erase(CameraId);
+#if PLATFORM_ANDROID
+		AndroidThunkCpp_Camera_Stop(CameraId);
+#endif
+	}
+}
+
+UAndroidCameraComponent* FAndroidCameraModule::GetComponent(int CameraId)
+{
+	auto it = IdToComponents.find(CameraId);
+	if (it == IdToComponents.end())
+	{
+		UE_LOG(LogCamera, Display, TEXT("Cannot find component with id %d"), CameraId);
+		return nullptr;
+	}
+	else
+	{
+		return it->second;
+	}
 }
 
 #undef LOCTEXT_NAMESPACE
 	
 IMPLEMENT_MODULE(FAndroidCameraModule, AndroidCamera)
-
-#if PLATFORM_ANDROID
-int SetupJNICamera(JNIEnv* env)
-{
-	if (!env) return JNI_ERR;
-
-	ENV = env;
-
-	AndroidThunkJava_startCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_startCamera", "(II)V", false);
-	if (!AndroidThunkJava_startCamera)
-	{
-		__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "ERROR: AndroidThunkJava_startCamera Method cant be found T_T ");
-		return JNI_ERR;
-	}
-
-	AndroidThunkJava_stopCamera = FJavaWrapper::FindMethod(ENV, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_stopCamera", "()V", false);
-	if (!AndroidThunkJava_stopCamera)
-	{
-		__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "ERROR: AndroidThunkJava_stopCamera Method cant be found T_T ");
-		return JNI_ERR;
-	}
-
-	//FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, jToast);
-	__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "module load success!!! ^_^");
-
-	return JNI_OK;
-}
-
-void  AndroidThunkCpp_startCamera()
-{
-	if (!AndroidThunkJava_startCamera || !ENV) return;
-	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_startCamera, WIDTH, HEIGHT);
-}
-
-void AndroidThunkCpp_stopCamera()
-{
-	if (!AndroidThunkJava_stopCamera || !ENV) return;
-	FJavaWrapper::CallVoidMethod(ENV, FJavaWrapper::GameActivityThis, AndroidThunkJava_stopCamera);
-}
-
-extern "C" bool Java_com_epicgames_ue4_GameActivity_nativeGetFrameData(JNIEnv* LocalJNIEnv, jobject LocalThiz, 
-	jobject y_byte_buffer, jint y_row_stride, jint y_pixel_stride,
-	jobject u_byte_buffer, jint u_row_stride, jint u_pixel_stride,
-	jobject v_byte_buffer, jint v_row_stride, jint v_pixel_stride,
-	jint width, jint height)
-{
-	auto y_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(y_byte_buffer));
-	auto u_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(u_byte_buffer));
-	auto v_buffer = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(v_byte_buffer));
-    
-	if (rawDataAndroid == nullptr) {
-		rawDataAndroid = new unsigned char[width * height * 4];
-		WIDTH = width;
-		HEIGHT = height;
-	}
-
-	if (yuvDataAndroid == nullptr) {
-		yuvDataAndroid = new unsigned char[width * height + (width * height / 2)];
-	}
-
-	{
-		ScopedTimer(TEXT("YUV to RGB"));
-		UE_LOG(LogCamera, Log, TEXT("Width %d Height %d Stride %d %d %d"), width, height, y_row_stride, u_row_stride, u_pixel_stride);
-		ImageFormatUtils::YUV420ToARGB8888(y_buffer, u_buffer, v_buffer, width, height, y_row_stride, u_row_stride, u_pixel_stride, (int*)rawDataAndroid);
-	}
-
-	std::memcpy(yuvDataAndroid, y_buffer, width * height);
-	std::memcpy(yuvDataAndroid + width * height, u_buffer, (width * height) / 4);
-	std::memcpy(yuvDataAndroid + width * height + (width * height) / 4, v_buffer, (width * height) / 4);
-
-	newFrame = true;
-	//__android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, "new frame arrive ^_^");
-	return JNI_TRUE;
-}
-
-#endif

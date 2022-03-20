@@ -126,32 +126,6 @@ public class CameraConnectionFragment extends Fragment {
   private HandlerThread backgroundThread;
   /** A {@link Handler} for running tasks in the background. */
   private Handler backgroundHandler;
-  /**
-   * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a {@link
-   * TextureView}.
-   */
-  private final TextureView.SurfaceTextureListener surfaceTextureListener =
-      new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(
-            final SurfaceTexture texture, final int width, final int height) {
-          openCamera(width, height);
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(
-            final SurfaceTexture texture, final int width, final int height) {
-          configureTransform(width, height);
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(final SurfaceTexture texture) {
-          return true;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(final SurfaceTexture texture) {}
-      };
   /** An {@link ImageReader} that handles preview frame capture. */
   private ImageReader previewReader;
   /** {@link CaptureRequest.Builder} for the camera preview */
@@ -196,6 +170,10 @@ public class CameraConnectionFragment extends Fragment {
     this.cameraConnectionCallback = connectionCallback;
     this.imageListener = imageListener;
     this.inputSize = inputSize;
+  }
+
+  public int getCameraId() {
+      return Integer.parseInt(cameraId);
   }
 
   /**
@@ -372,9 +350,8 @@ public class CameraConnectionFragment extends Fragment {
               inputSize.getWidth(),
               inputSize.getHeight());
 
-      // We fit the aspect ratio of TextureView to the size of preview we picked.
-      final int orientation = getResources().getConfiguration().orientation;
-      //TODO(dostos): do something with an orientation above
+
+      cameraConnectionCallback.onCameraStart(Integer.parseInt(cameraId), previewSize, sensorOrientation);
     } catch (final CameraAccessException e) {
       Log.e(TAG, "Exception!");
     } catch (final NullPointerException e) {
@@ -385,8 +362,6 @@ public class CameraConnectionFragment extends Fragment {
           .show(getChildFragmentManager(), FRAGMENT_DIALOG);
       throw new IllegalStateException(errorMsg);
     }
-
-    cameraConnectionCallback.onPreviewSizeChosen(previewSize, sensorOrientation);
   }
 
   /** Opens the camera specified by {@link CameraConnectionFragment#cameraId}. */
@@ -556,7 +531,7 @@ public class CameraConnectionFragment extends Fragment {
    * known.
    */
   public interface ConnectionCallback {
-    void onPreviewSizeChosen(Size size, int cameraRotation);
+    void onCameraStart(int CameraId, Size size, int cameraRotation);
   }
 
   /** Compares two {@code Size}s based on their areas. */
