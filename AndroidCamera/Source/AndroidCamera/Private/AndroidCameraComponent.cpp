@@ -1,7 +1,6 @@
 #include "AndroidCameraComponent.h"
 #include "AndroidCamera.h"
 #include "ImageFormatUtils.h"
-#include "ScopedTimer.h"
 #include "Rendering/Texture2DResource.h"
 #include "HAL/FileManager.h"
 
@@ -130,7 +129,6 @@ void UAndroidCameraComponent::OnImageAvailable(unsigned char* Y, unsigned char* 
 	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraYUV420toARGB);
 	std::lock_guard<std::mutex> Guard(BufferMutex);
 	// TODO(dostos): use worker thread?
-	ScopedTimer("OnImageAvailable-YUV420 to RGB");
 	ImageFormatUtils::YUV420ToARGB8888(Y, U, V, Width, Height, YRowStride, URowStride, UPixelStride, reinterpret_cast<int*>(ARGBBuffer));
 	NewFrame = true;
 }

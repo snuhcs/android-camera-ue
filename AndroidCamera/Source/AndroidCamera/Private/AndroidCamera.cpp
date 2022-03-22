@@ -4,7 +4,6 @@
 #include "AndroidCameraPermission.h"
 #include "AndroidCameraComponent.h"
 #include "ImageFormatUtils.h"
-#include "ScopedTimer.h"
 
 DEFINE_STAT(STAT_AndroidCameraYUV420toARGB);
 
