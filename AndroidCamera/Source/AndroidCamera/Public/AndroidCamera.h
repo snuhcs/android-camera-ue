@@ -8,6 +8,9 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogCamera, Log, All);
 
+DECLARE_STATS_GROUP(TEXT("AndroidCamera"), STATGROUP_AndroidCamera, STATCAT_Advanced);
+DECLARE_CYCLE_STAT_EXTERN(TEXT("YUV420toARGB"), STAT_AndroidCameraYUV420toARGB, STATGROUP_AndroidCamera, NO_API);
+
 class UAndroidCameraComponent;
 class FAndroidCameraModule : public IModuleInterface
 {

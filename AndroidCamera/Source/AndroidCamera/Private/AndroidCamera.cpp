@@ -6,6 +6,8 @@
 #include "ImageFormatUtils.h"
 #include "ScopedTimer.h"
 
+DEFINE_STAT(STAT_AndroidCameraYUV420toARGB);
+
 #if PLATFORM_ANDROID
 #include "Android/AndroidApplication.h"
 #include "Android/AndroidJNI.h"

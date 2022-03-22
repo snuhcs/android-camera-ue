@@ -127,6 +127,7 @@ int UAndroidCameraComponent::GetCameraRotation() const
 
 void UAndroidCameraComponent::OnImageAvailable(unsigned char* Y, unsigned char* U, unsigned char* V, int YRowStride, int URowStride, int VRowStride, int YPixelStride, int UPixelStride, int VPixelStride)
 {
+	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraYUV420toARGB);
 	std::lock_guard<std::mutex> Guard(BufferMutex);
 	// TODO(dostos): use worker thread?
 	ScopedTimer("OnImageAvailable-YUV420 to RGB");
