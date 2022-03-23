@@ -14,6 +14,21 @@ void UAndroidCameraFrame::BeginDestroy()
 		UpdateTextureRegion = nullptr;
 	}
 
+	if (Y)
+	{
+		delete[] Y;
+	}
+
+	if (U)
+	{
+		delete[] U;
+	}
+
+	if (V)
+	{
+		delete[] V;
+	}
+
 	// No need to deallocate as UE4 owns transient texture
 	CameraTexture = nullptr;
 

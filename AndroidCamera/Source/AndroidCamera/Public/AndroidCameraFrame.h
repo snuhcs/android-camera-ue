@@ -8,10 +8,8 @@ UCLASS(Blueprintable)
 class ANDROIDCAMERA_API UAndroidCameraFrame : public UObject
 {
 	GENERATED_BODY()
-
-	virtual void BeginDestroy() override;
-
 public:
+	virtual void BeginDestroy() override;
 
 	void Initialize(int Width, int Height);
 
@@ -40,7 +38,6 @@ private:
 	int Width;
 	int Height;
 
-	// Buffer ptrs owned by Java
 	uint8* Y = nullptr;
 	uint8* U = nullptr;
 	uint8* V = nullptr;
