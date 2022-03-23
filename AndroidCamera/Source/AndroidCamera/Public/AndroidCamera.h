@@ -9,10 +9,27 @@
 DECLARE_LOG_CATEGORY_EXTERN(LogCamera, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("AndroidCamera"), STATGROUP_AndroidCamera, STATCAT_Advanced);
-DECLARE_CYCLE_STAT_EXTERN(TEXT("YUV420toARGB"), STAT_AndroidCameraYUV420toARGB, STATGROUP_AndroidCamera, NO_API);
+DECLARE_CYCLE_STAT_EXTERN(TEXT("YUV420toARGB"), STAT_AndroidCameraYUV420toARGB, STATGROUP_AndroidCamera, ANDROIDCAMERA_API);
+DECLARE_CYCLE_STAT_EXTERN(TEXT("ARGBtoTexture2D"), STAT_AndroidCameraARGBtoTexture2D, STATGROUP_AndroidCamera, ANDROIDCAMERA_API);
+DECLARE_CYCLE_STAT_EXTERN(TEXT("CopyBuffer"), STAT_AndroidCameraCopyBuffer, STATGROUP_AndroidCamera, ANDROIDCAMERA_API);
 
 class UAndroidCameraComponent;
-class FAndroidCameraModule : public IModuleInterface
+
+/*
+AndroidCameraModule that manages multiple camera components
+and communicates with Java side Camera2 API (CameraConnectionFragment)
+
+Initialization order of the AndroidCamera
+1. Initialize component (UAndroidCameraComponent)
+2. Start Java side camera (CameraConnectionFragment)
+3. Activate component with corresponding component (ActivateComponent)
+
+Frame pipeline
+1. CameraConnectionFragment calls jni interface on frame arrival (OnImageAvailable)
+2. FAndroidCameraModule sends specific event to corresponding component
+3. UAndroidCameraComponent broadcasts OnFrameAvailable delegate
+*/
+class ANDROIDCAMERA_API FAndroidCameraModule : public IModuleInterface
 {
 public:
 
@@ -21,13 +38,6 @@ public:
 	virtual void ShutdownModule() override;
 	
 	static FAndroidCameraModule &Get();
-
-	/*
-	Initialization order of the AndroidCamera
-	1. Initialize component (UAndroidCameraComponent)
-	2. Start Java side camera (CameraConnectionFragment)
-	3. Activate component with corresponding component (ActivateComponent)
-	*/
 	void RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight);
 	void ActivateComponent(int CameraId, int PreviewWidth, int PreviewHeight, int CameraRotation);
 	void UnregisterComponent(int CameraId);

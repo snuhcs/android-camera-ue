@@ -31,9 +31,9 @@
 		<insert>
       public native boolean OnImageAvailable(
 					int cameraId,
-      		ByteBuffer y, int yRowStride, int yPixelStride,
-					ByteBuffer u, int uRowStride, int uPixelStride,
-					ByteBuffer v, int vRowStride, int vPixelStride,
+      				ByteBuffer y, ByteBuffer u, ByteBuffer v,
+					int yRowStride, int uvRowStride, int uvPixelStride,
+					int yLength, int uLength, int vLength,
 					int width, int height);
 				
 			public native void OnCameraStart(int cameraId, int previewWidth, int previewHeight, int cameraRotation);
@@ -52,16 +52,18 @@
 				  new ImageReader.OnImageAvailableListener() {
 					  @Override
 					  public void onImageAvailable(ImageReader imageReader) {
-						Image image = imageReader.acquireLatestImage();
-					  	final Image.Plane[] planes = image.getPlanes();
-						OnImageAvailable(
-								cameraConnectionFragment.getCameraId(),
-								planes[0].getBuffer(), planes[0].getRowStride(), planes[0].getPixelStride(),
-								planes[1].getBuffer(), planes[1].getRowStride(), planes[1].getPixelStride(),
-								planes[2].getBuffer(), planes[2].getRowStride(), planes[2].getPixelStride(),
-								image.getWidth(), image.getHeight()
-						);
-            image.close();
+							Image image = imageReader.acquireLatestImage();
+							if (image != null) {
+					  			final Image.Plane[] planes = image.getPlanes();
+								OnImageAvailable(
+										cameraConnectionFragment.getCameraId(),
+										planes[0].getBuffer(), planes[1].getBuffer(), planes[2].getBuffer(),
+										planes[0].getRowStride(), planes[1].getRowStride(), planes[1].getPixelStride(),
+										planes[0].getBuffer().capacity(), planes[1].getBuffer().capacity(), planes[2].getBuffer().capacity(),
+										image.getWidth(), image.getHeight()
+								);
+								image.close();
+							}
 					  }
 				  }, new Size(desiredPreviewWidth, desiredPreviewHeight)
 

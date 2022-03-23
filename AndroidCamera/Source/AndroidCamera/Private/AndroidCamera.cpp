@@ -6,6 +6,8 @@
 #include "ImageFormatUtils.h"
 
 DEFINE_STAT(STAT_AndroidCameraYUV420toARGB);
+DEFINE_STAT(STAT_AndroidCameraARGBtoTexture2D);
+DEFINE_STAT(STAT_AndroidCameraCopyBuffer);
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidApplication.h"
@@ -40,9 +42,9 @@ extern "C" void Java_com_epicgames_ue4_GameActivity_OnCameraStart(JNIEnv * Local
 
 extern "C" bool Java_com_epicgames_ue4_GameActivity_OnImageAvailable(JNIEnv * LocalJNIEnv, jobject LocalThiz,
 	jint CameraId,
-	jobject YByteBuffer, jint YRowStride, jint YPixelStride,
-	jobject UByteBuffer, jint URowStride, jint UPixelStride,
-	jobject VByteBuffer, jint VRowStride, jint VPixelStride,
+	jobject YByteBuffer, jobject UByteBuffer, jobject VByteBuffer,
+	jint YRowStride, jint UVRowStride, jint UVPixelStride,
+	jint YLength, jint ULength, jint VLength,
 	jint Width, jint Height)
 {
 	auto Y = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(YByteBuffer));
@@ -51,7 +53,7 @@ extern "C" bool Java_com_epicgames_ue4_GameActivity_OnImageAvailable(JNIEnv * Lo
 
 	if (UAndroidCameraComponent* Component = FAndroidCameraModule::Get().GetComponent(CameraId))
 	{
-		Component->OnImageAvailable(Y, U, V, YRowStride, URowStride, VRowStride, YPixelStride, UPixelStride, VPixelStride);
+		Component->OnImageAvailable(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
 		return JNI_TRUE;
 	}
 	else

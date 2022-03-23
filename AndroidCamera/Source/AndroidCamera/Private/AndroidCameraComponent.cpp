@@ -1,4 +1,5 @@
 #include "AndroidCameraComponent.h"
+#include "AndroidCameraFrame.h"
 #include "AndroidCamera.h"
 #include "ImageFormatUtils.h"
 #include "Rendering/Texture2DResource.h"
@@ -25,29 +26,10 @@ void UAndroidCameraComponent::ActivateComponent(int TargetCameraId, int PreviewW
 	UE_LOG(LogCamera, Display, TEXT("ActivateComponent id %d %dx%d"), TargetCameraId, PreviewWidth, PreviewHeight);
 	CameraId = TargetCameraId;
 	CameraRotation = TargetCameraRotation;
-	Width = PreviewWidth;
-	Height = PreviewHeight;
 	bActive = true;
 
-	ARGBBuffer = new unsigned char[PreviewWidth * PreviewHeight * 4];
-	CameraTexture = UTexture2D::CreateTransient(PreviewWidth, PreviewHeight, PF_B8G8R8A8);
-	CameraTexture->UpdateResource();
-	UpdateTextureRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, PreviewWidth, PreviewHeight);
-}
-
-bool UAndroidCameraComponent::UpdateCamera(float delta)
-{
-	Timer += delta;
-	if (Timer >= (1.f / FrameRate))
-	{
-		Timer = 0;
-		if (CameraTexture && bActive && NewFrame)
-		{
-			return true;
-		}
-	}
-
-	return false;
+	CameraFrame = NewObject<UAndroidCameraFrame>(this);
+	CameraFrame->Initialize(PreviewWidth, PreviewHeight);
 }
 
 void UAndroidCameraComponent::StartCamera(int DesiredWidth, int DesiredHeight)
@@ -62,55 +44,11 @@ void UAndroidCameraComponent::StartCamera(int DesiredWidth, int DesiredHeight)
 
 void UAndroidCameraComponent::EndCamera()
 {
+	CameraFrame = nullptr;
 	bRegistered = false;
 	bActive = false;
 
-	if (ARGBBuffer)
-	{
-		delete[] ARGBBuffer;
-		ARGBBuffer = nullptr;
-	}
-
-	if (UpdateTextureRegion)
-	{
-		delete UpdateTextureRegion;
-		UpdateTextureRegion = nullptr;
-	}
-
-	// No need to deallocate as UE4 owns transient texture
-	CameraTexture = nullptr;
-
 	FAndroidCameraModule::Get().UnregisterComponent(CameraId);
-}
-
-unsigned char* UAndroidCameraComponent::GetBuffer()
-{
-	std::lock_guard<std::mutex> Guard(BufferMutex);
-	NewFrame = false;
-	return ARGBBuffer;
-}
-
-UTexture2D* UAndroidCameraComponent::GetTexture2D()
-{
-	if (!bActive)
-	{
-		return nullptr;
-	}
-
-	std::lock_guard<std::mutex> Guard(BufferMutex);
-	NewFrame = false;
-	CameraTexture->UpdateTextureRegions(0, 1, UpdateTextureRegion, 4 * Width, 4, ARGBBuffer);
-	return CameraTexture;
-}
-
-int UAndroidCameraComponent::GetPreviewWidth() const
-{
-	return Width;
-}
-
-int UAndroidCameraComponent::GetPreviewHeight() const
-{
-	return Height;
 }
 
 int UAndroidCameraComponent::GetCameraId() const
@@ -123,12 +61,20 @@ int UAndroidCameraComponent::GetCameraRotation() const
 	return CameraRotation;
 }
 
-
-void UAndroidCameraComponent::OnImageAvailable(unsigned char* Y, unsigned char* U, unsigned char* V, int YRowStride, int URowStride, int VRowStride, int YPixelStride, int UPixelStride, int VPixelStride)
+void UAndroidCameraComponent::OnImageAvailable(
+	unsigned char* Y, unsigned char* U, unsigned char* V,
+	int YRowStride, int UVRowStride, int UVPixelStride,
+	int YLength, int ULength, int VLength)
 {
-	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraYUV420toARGB);
-	std::lock_guard<std::mutex> Guard(BufferMutex);
 	// TODO(dostos): use worker thread?
-	ImageFormatUtils::YUV420ToARGB8888(Y, U, V, Width, Height, YRowStride, URowStride, UPixelStride, reinterpret_cast<int*>(ARGBBuffer));
-	NewFrame = true;
+	if (OnFrameAvailable.IsBound())
+	{
+		CameraFrame->UpdateFrame(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
+
+		// This code is on a random thread
+		FFunctionGraphTask::CreateAndDispatchWhenReady([&]()
+		{
+			OnFrameAvailable.Broadcast(CameraFrame);
+		}, TStatId(), nullptr, ENamedThreads::GameThread);
+	}
 }
