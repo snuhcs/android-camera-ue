@@ -66,12 +66,11 @@ void UAndroidCameraComponent::OnImageAvailable(
 	int YRowStride, int UVRowStride, int UVPixelStride,
 	int YLength, int ULength, int VLength)
 {
-	// TODO(dostos): use worker thread?
 	if (OnFrameAvailable.IsBound())
 	{
 		CameraFrame->UpdateFrame(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
 
-		// This code is on a random thread
+		// This code is on a Java thread
 		FFunctionGraphTask::CreateAndDispatchWhenReady([&]()
 		{
 			OnFrameAvailable.Broadcast(CameraFrame);
