@@ -57,37 +57,43 @@ int UAndroidCameraFrame::GetHeight() const
 	return Height;
 }
 
-unsigned char* UAndroidCameraFrame::GetBuffer()
+unsigned char *UAndroidCameraFrame::GetARGBBuffer()
 {
 	if (IsBufferDirty && ARGBBuffer)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AndroidCameraYUV420toARGB);
-		ImageFormatUtils::YUV420ToARGB8888(Y, U, V, Width, Height, YRowStride, UVRowStride, UVPixelStride, reinterpret_cast<int*>(ARGBBuffer));
+		ImageFormatUtils::YUV420ToARGB8888(Y, U, V, Width, Height, YRowStride, UVRowStride, UVPixelStride, reinterpret_cast<int *>(ARGBBuffer));
 		IsBufferDirty = false;
 	}
 	return ARGBBuffer;
 }
 
-UTexture2D* UAndroidCameraFrame::GetTexture2D()
+UTexture2D *UAndroidCameraFrame::GetTexture2D()
 {
 	if (IsTextureDirty && CameraTexture)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AndroidCameraARGBtoTexture2D);
-		CameraTexture->UpdateTextureRegions(0, 1, UpdateTextureRegion, 4 * Width, 4, GetBuffer());
+		CameraTexture->UpdateTextureRegions(0, 1, UpdateTextureRegion, 4 * Width, 4, GetARGBBuffer());
 		IsTextureDirty = false;
 	}
 	return CameraTexture;
 }
 
-void UAndroidCameraFrame::UpdateFrame(unsigned char* NewY, unsigned char* NewU, unsigned char* NewV, int NewYRowStride, int NewUVRowStride, int NewUVPixelStride,
-	int NewYLength, int NewULength, int NewVLength)
+UAndroidCameraFrame::NV12Frame UAndroidCameraFrame::GetData() const
+{
+	return {Y, U, V, YRowStride, UVRowStride, UVPixelStride};
+}
+
+void UAndroidCameraFrame::UpdateFrame(unsigned char *NewY, unsigned char *NewU, unsigned char *NewV, int NewYRowStride, int NewUVRowStride, int NewUVPixelStride,
+									  int NewYLength, int NewULength, int NewVLength)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraCopyBuffer);
 
-	// Lazily initialize YUV buffer 
-	// TODO(dostos): move this to `Initialize` if 
+	// Lazily initialize YUV buffer
+	// TODO(dostos): move this to `Initialize` if
 	// there is a way to determine plane sizes in advance
-	if (!Y || NewYLength > YLength) {
+	if (!Y || NewYLength > YLength)
+	{
 		if (Y)
 		{
 			delete[] Y;
@@ -96,7 +102,8 @@ void UAndroidCameraFrame::UpdateFrame(unsigned char* NewY, unsigned char* NewU, 
 		YLength = NewYLength;
 	}
 
-	if (!U || NewULength > ULength) {
+	if (!U || NewULength > ULength)
+	{
 		if (U)
 		{
 			delete[] U;
@@ -105,7 +112,8 @@ void UAndroidCameraFrame::UpdateFrame(unsigned char* NewY, unsigned char* NewU, 
 		ULength = NewULength;
 	}
 
-	if (!V || NewVLength > VLength) {
+	if (!V || NewVLength > VLength)
+	{
 		if (V)
 		{
 			delete[] V;

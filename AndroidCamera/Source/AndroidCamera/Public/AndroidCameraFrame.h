@@ -18,9 +18,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	int GetHeight() const;
 
-	unsigned char* GetBuffer();
+	unsigned char* GetARGBBuffer();
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	UTexture2D* GetTexture2D();
+
+	struct NV12Frame
+	{
+		uint8* Y;
+		uint8* U;
+		uint8* V;
+		int YRowStride;
+		int UVRowStride;
+		int UVPixelStride;
+	};
+
+	NV12Frame GetData() const;
 
 private:
 	inline int GetPlaneSize() const;
