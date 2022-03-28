@@ -66,7 +66,7 @@ void UAndroidCameraComponent::OnImageAvailable(
 	int YRowStride, int UVRowStride, int UVPixelStride,
 	int YLength, int ULength, int VLength)
 {
-	if (OnFrameAvailable.IsBound())
+	if (OnFrameAvailable.IsBound() || OnFrameAvailableDynamic.IsBound())
 	{
 		CameraFrame->UpdateFrame(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
 
@@ -74,6 +74,7 @@ void UAndroidCameraComponent::OnImageAvailable(
 		FFunctionGraphTask::CreateAndDispatchWhenReady([&]()
 		{
 			OnFrameAvailable.Broadcast(CameraFrame);
+			OnFrameAvailableDynamic.Broadcast(CameraFrame);
 		}, TStatId(), nullptr, ENamedThreads::GameThread);
 	}
 }
