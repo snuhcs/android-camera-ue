@@ -3,8 +3,8 @@
 #include "AndroidCameraComponent.generated.h"
 
 class UAndroidCameraFrame;
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFrameAvailableDynamic, UAndroidCameraFrame*, AndroidCameraFrame);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnFrameAvailable, UAndroidCameraFrame*);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFrameAvailableDynamic, const UAndroidCameraFrame*, AndroidCameraFrame);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnFrameAvailable, const UAndroidCameraFrame*);
 
 
 UCLASS(ClassGroup = (AndroidCamera), meta = (BlueprintSpawnableComponent))

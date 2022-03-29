@@ -57,7 +57,7 @@ int UAndroidCameraFrame::GetHeight() const
 	return Height;
 }
 
-unsigned char *UAndroidCameraFrame::GetARGBBuffer()
+unsigned char *UAndroidCameraFrame::GetARGBBuffer() const
 {
 	if (IsBufferDirty && ARGBBuffer)
 	{
@@ -68,7 +68,7 @@ unsigned char *UAndroidCameraFrame::GetARGBBuffer()
 	return ARGBBuffer;
 }
 
-UTexture2D *UAndroidCameraFrame::GetTexture2D()
+UTexture2D *UAndroidCameraFrame::GetTexture2D() const
 {
 	if (IsTextureDirty && CameraTexture)
 	{
