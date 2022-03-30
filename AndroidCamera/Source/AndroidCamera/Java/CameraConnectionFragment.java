@@ -16,6 +16,7 @@
 
 package com.dostos;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -24,6 +25,7 @@ import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -41,6 +43,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
 import android.media.ImageReader.OnImageAvailableListener;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -54,6 +57,10 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -88,6 +95,9 @@ public class CameraConnectionFragment extends Fragment {
     ORIENTATIONS.append(Surface.ROTATION_180, 270);
     ORIENTATIONS.append(Surface.ROTATION_270, 180);
   }
+
+  private static final int PERMISSIONS_REQUEST = 1;
+  private static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
 
   /** A {@link Semaphore} to prevent the app from exiting before closing the camera. */
   private final Semaphore cameraOpenCloseLock = new Semaphore(1);
@@ -252,12 +262,20 @@ public class CameraConnectionFragment extends Fragment {
   }
 
   @Override
+  public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+    if (hasPermission()) {
+      openCamera(inputSize.getWidth(), inputSize.getHeight());
+    } else {
+      requestPermission();
+    }
+  }
+
+  @Override
   public void onAttach(Context context) {
     super.onAttach(context);
-
-    if (surfaceTexture == null) {
-      openCamera(inputSize.getWidth(), inputSize.getHeight());
-    }
+    requestPermission();
   }
 
   @Override
@@ -272,6 +290,27 @@ public class CameraConnectionFragment extends Fragment {
 
     if (surfaceTexture == null) {
       openCamera(inputSize.getWidth(), inputSize.getHeight());
+    }
+  }
+
+  private boolean hasPermission() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      return ActivityCompat.checkSelfPermission(getContext(), PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED;
+    } else {
+      return true;
+    }
+  }
+
+  private void requestPermission() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      if (shouldShowRequestPermissionRationale(PERMISSION_CAMERA)) {
+        Toast.makeText(
+                getActivity(),
+                "Camera permission is required!",
+                Toast.LENGTH_LONG)
+                .show();
+      }
+      requestPermissions(new String[] {PERMISSION_CAMERA}, PERMISSIONS_REQUEST);
     }
   }
 
@@ -366,6 +405,7 @@ public class CameraConnectionFragment extends Fragment {
 
   /** Opens the camera specified by {@link CameraConnectionFragment#cameraId}. */
   private void openCamera(final int width, final int height) {
+    assert surfaceTexture != null;
     setUpCameraOutputs();
     configureTransform(width, height);
     final Activity activity = getActivity();
