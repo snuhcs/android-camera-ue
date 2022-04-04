@@ -275,7 +275,12 @@ public class CameraConnectionFragment extends Fragment {
   @Override
   public void onAttach(Context context) {
     super.onAttach(context);
-    requestPermission();
+    
+    if (hasPermission()) {
+      openCamera(inputSize.getWidth(), inputSize.getHeight());
+    } else {
+      requestPermission();
+    }
   }
 
   @Override
