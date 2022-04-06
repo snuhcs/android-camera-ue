@@ -69,12 +69,18 @@ void UAndroidCameraComponent::OnImageAvailable(
 	if (OnFrameAvailable.IsBound() || OnFrameAvailableDynamic.IsBound())
 	{
 		CameraFrame->UpdateFrame(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
-
+		
+		
+		AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask, [&]()
+		{
+			OnFrameAvailable.Broadcast(CameraFrame);
+		});
+		
 		// This code is on a Java thread
 		FFunctionGraphTask::CreateAndDispatchWhenReady([&]()
 		{
-			OnFrameAvailable.Broadcast(CameraFrame);
 			OnFrameAvailableDynamic.Broadcast(CameraFrame);
 		}, TStatId(), nullptr, ENamedThreads::GameThread);
+		
 	}
 }

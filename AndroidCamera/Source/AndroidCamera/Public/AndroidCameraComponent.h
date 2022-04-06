@@ -31,6 +31,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = AndroidCamera)
 	FOnFrameAvailableDynamic OnFrameAvailableDynamic;
+	/*
+	CAUTION: This delegate doesn't guarantee access from game thread 
+	*/
 	FOnFrameAvailable OnFrameAvailable;
 
 private:
