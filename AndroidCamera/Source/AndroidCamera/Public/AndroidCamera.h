@@ -44,6 +44,9 @@ public:
 
 	UAndroidCameraComponent* GetComponent(int CameraId);
 
+	bool OnImageAvailable(int CameraId, unsigned char* Y, unsigned char* U, unsigned char* V, 
+		int YRowStride, int UVRowStride, int UVPixelStride,
+		int YLength, int ULength, int VLength);
 private:
 	// Map of activated components
 	std::map<int, UAndroidCameraComponent*> IdToComponents;

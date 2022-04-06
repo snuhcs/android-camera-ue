@@ -3,6 +3,7 @@
 #include "AndroidCamera.h"
 #include "AndroidCameraPermission.h"
 #include "AndroidCameraComponent.h"
+#include "AndroidCameraTrace.h"
 #include "ImageFormatUtils.h"
 
 DEFINE_STAT(STAT_AndroidCameraYUV420toARGB);
@@ -50,16 +51,7 @@ extern "C" bool Java_com_epicgames_ue4_GameActivity_OnImageAvailable(JNIEnv * Lo
 	auto Y = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(YByteBuffer));
 	auto U = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(UByteBuffer));
 	auto V = reinterpret_cast<unsigned char*>(LocalJNIEnv->GetDirectBufferAddress(VByteBuffer));
-
-	if (UAndroidCameraComponent* Component = FAndroidCameraModule::Get().GetComponent(CameraId))
-	{
-		Component->OnImageAvailable(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
-		return JNI_TRUE;
-	}
-	else
-	{
-		return JNI_FALSE;
-	}
+	return FAndroidCameraModule::Get().OnImageAvailable(CameraId, Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
 }
 
 #endif
@@ -138,6 +130,21 @@ UAndroidCameraComponent* FAndroidCameraModule::GetComponent(int CameraId)
 	else
 	{
 		return it->second;
+	}
+}
+
+bool FAndroidCameraModule::OnImageAvailable(int CameraId, unsigned char* Y, unsigned char* U, unsigned char* V,
+	int YRowStride, int UVRowStride, int UVPixelStride, int YLength, int ULength, int VLength)
+{
+	TRACE_ANDROIDCAMERA_ON_FRAME(CameraId);
+	if (UAndroidCameraComponent* Component = FAndroidCameraModule::Get().GetComponent(CameraId))
+	{
+		Component->OnImageAvailable(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 

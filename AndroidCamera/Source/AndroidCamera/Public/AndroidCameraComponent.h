@@ -33,12 +33,14 @@ public:
 	FOnFrameAvailableDynamic OnFrameAvailableDynamic;
 	FOnFrameAvailable OnFrameAvailable;
 
+private:
+	friend class FAndroidCameraModule;
+	// Camera callback from Java side (Android Camera Module)
 	void OnImageAvailable(
 		unsigned char* Y, unsigned char* U, unsigned char* V, 
 		int YRowStride, int UVRowStride, int UVPixelStride,
 		int YLength, int ULength, int VLength);
 
-private:
 	bool bRegistered = false;
 	bool bActive = false;;
 
