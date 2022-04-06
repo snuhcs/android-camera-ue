@@ -41,6 +41,7 @@ public class AndroidCamera : ModuleRules
 				"Slate",
 				"SlateCore",
                 "RHI",
+                "TraceLog",
                 "RenderCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
