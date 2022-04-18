@@ -1,4 +1,6 @@
 #include "AndroidCameraFrame.h"
+#include "AndroidCamera.h"
+#include "ImageFormatUtils.h"
 
 void UAndroidCameraFrame::BeginDestroy()
 {
@@ -37,8 +39,6 @@ void UAndroidCameraFrame::BeginDestroy()
 
 void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight)
 {
-	CameraTexture = UTexture2D::CreateTransient(PreviewWidth, PreviewHeight, PF_B8G8R8A8);
-	CameraTexture->UpdateResource();
 	UpdateTextureRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, PreviewWidth, PreviewHeight);
 
 	Width = PreviewWidth;
@@ -70,6 +70,13 @@ unsigned char *UAndroidCameraFrame::GetARGBBuffer() const
 
 UTexture2D *UAndroidCameraFrame::GetTexture2D() const
 {
+	if (!CameraTexture)
+	{
+		CameraTexture = UTexture2D::CreateTransient(Width, Height, PF_B8G8R8A8);
+		CameraTexture->UpdateResource();
+		CameraTexture->WaitForPendingInitOrStreaming();
+	}
+	
 	if (IsTextureDirty && CameraTexture)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AndroidCameraARGBtoTexture2D);
