@@ -4,6 +4,7 @@
 
 class UAndroidCameraFrame;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFrameAvailableDynamic, const UAndroidCameraFrame*, AndroidCameraFrame);
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnFrameAvailable, const UAndroidCameraFrame*);
 
 
@@ -29,6 +30,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	int GetCameraRotation() const;
 
+	const bool IsCameraRegistered() const;
+
 	UPROPERTY(BlueprintAssignable, Category = AndroidCamera)
 	FOnFrameAvailableDynamic OnFrameAvailableDynamic;
 	/*
@@ -40,7 +43,7 @@ private:
 	friend class FAndroidCameraModule;
 	// Camera callback from Java side (Android Camera Module)
 	void OnImageAvailable(
-		unsigned char* Y, unsigned char* U, unsigned char* V, 
+		unsigned char* Y, unsigned char* U, unsigned char* V,
 		int YRowStride, int UVRowStride, int UVPixelStride,
 		int YLength, int ULength, int VLength);
 

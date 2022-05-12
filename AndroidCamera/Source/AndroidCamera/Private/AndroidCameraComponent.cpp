@@ -61,6 +61,11 @@ int UAndroidCameraComponent::GetCameraRotation() const
 	return CameraRotation;
 }
 
+const bool UAndroidCameraComponent::IsCameraRegistered() const
+{
+	return bRegistered;
+}
+
 void UAndroidCameraComponent::OnImageAvailable(
 	unsigned char* Y, unsigned char* U, unsigned char* V,
 	int YRowStride, int UVRowStride, int UVPixelStride,
@@ -69,18 +74,14 @@ void UAndroidCameraComponent::OnImageAvailable(
 	if (OnFrameAvailable.IsBound() || OnFrameAvailableDynamic.IsBound())
 	{
 		CameraFrame->UpdateFrame(Y, U, V, YRowStride, UVRowStride, UVPixelStride, YLength, ULength, VLength);
-		
-		
-		AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask, [&]()
-		{
+
+		AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask, [&]() {
 			OnFrameAvailable.Broadcast(CameraFrame);
 		});
-		
+
 		// This code is on a Java thread
-		FFunctionGraphTask::CreateAndDispatchWhenReady([&]()
-		{
+		FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
 			OnFrameAvailableDynamic.Broadcast(CameraFrame);
 		}, TStatId(), nullptr, ENamedThreads::GameThread);
-		
 	}
 }
