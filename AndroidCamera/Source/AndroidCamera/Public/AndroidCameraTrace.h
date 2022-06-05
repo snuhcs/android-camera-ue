@@ -18,7 +18,7 @@
 UE_TRACE_CHANNEL_EXTERN(TraceAndroidCameraChannel, ANDROIDCAMERA_API)
 
 // Emits trace events denoting scope/lifetime of an activity on the cooking channel.
-#define UE_SCOPED_ANDROIDCAMERATIMER(name)						TRACE_CPUPROFILER_EVENT_SCOPE_ON_CHANNEL(name, BandChannel)
+#define UE_SCOPED_ANDROIDCAMERATIMER(name) TRACE_CPUPROFILER_EVENT_SCOPE_ON_CHANNEL(name, BandChannel)
 #define UE_SCOPED_ANDROIDCAMERATIMER_AND_DURATION(name, durationStorage) \
 FScopedDurationTimer name##Timer(durationStorage); UE_SCOPED_COOKTIMER(name)
 
