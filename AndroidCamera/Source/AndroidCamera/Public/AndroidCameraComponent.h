@@ -29,6 +29,8 @@ public:
 	int GetCameraId() const;
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	int GetCameraRotation() const;
+	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
+	int GetCameraSamplingIntervalMs() const;
 
 	const bool IsCameraRegistered() const;
 

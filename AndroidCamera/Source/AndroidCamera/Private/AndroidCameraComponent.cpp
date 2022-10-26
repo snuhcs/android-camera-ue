@@ -61,6 +61,12 @@ int UAndroidCameraComponent::GetCameraRotation() const
 	return CameraRotation;
 }
 
+int UAndroidCameraComponent::GetCameraSamplingIntervalMs() const
+{
+	// TODO(dostos): Get from actual Camera2 interface
+	return 33;
+}
+
 const bool UAndroidCameraComponent::IsCameraRegistered() const
 {
 	return bRegistered;
