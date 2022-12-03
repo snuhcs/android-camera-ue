@@ -1,6 +1,14 @@
 #include "AndroidCameraFrame.h"
+
+#include <cassert>
+
 #include "AndroidCamera.h"
 #include "ImageFormatUtils.h"
+
+bool UAndroidCameraFrame::HasYUV() const
+{
+	return Y && U && V;
+}
 
 void UAndroidCameraFrame::BeginDestroy()
 {
@@ -37,15 +45,22 @@ void UAndroidCameraFrame::BeginDestroy()
 	Super::BeginDestroy();
 }
 
-void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight)
+void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight, const bool hasYUV, const EPixelFormat InFormat)
 {
 	UpdateTextureRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, PreviewWidth, PreviewHeight);
 
 	Width = PreviewWidth;
 	Height = PreviewHeight;
 
+	if(!hasYUV)
+	{
+		Y = U = V = nullptr;
+	}
+	PixelFormat = InFormat;
+	
 	ARGBBuffer = new unsigned char[GetPlaneSize() * 4];
 }
+
 
 int UAndroidCameraFrame::GetWidth() const
 {
@@ -59,12 +74,17 @@ int UAndroidCameraFrame::GetHeight() const
 
 unsigned char *UAndroidCameraFrame::GetARGBBuffer() const
 {
-	if (IsBufferDirty && ARGBBuffer)
+	if (IsBufferDirty && ARGBBuffer && HasYUV())
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AndroidCameraYUV420toARGB);
 		ImageFormatUtils::YUV420ToARGB8888(Y, U, V, Width, Height, YRowStride, UVRowStride, UVPixelStride, reinterpret_cast<int *>(ARGBBuffer));
 		IsBufferDirty = false;
 	}
+	else if(IsBufferDirty && ARGBBuffer && !HasYUV())
+	{
+		IsBufferDirty = false;
+	}
+	
 	return ARGBBuffer;
 }
 
@@ -72,7 +92,7 @@ UTexture2D *UAndroidCameraFrame::GetTexture2D() const
 {
 	if (!CameraTexture)
 	{
-		CameraTexture = UTexture2D::CreateTransient(Width, Height, PF_B8G8R8A8);
+		CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
 		CameraTexture->UpdateResource();
 		CameraTexture->WaitForPendingInitOrStreaming();
 	}
@@ -88,6 +108,10 @@ UTexture2D *UAndroidCameraFrame::GetTexture2D() const
 
 UAndroidCameraFrame::NV12Frame UAndroidCameraFrame::GetData() const
 {
+	if(!HasYUV())
+	{
+		UE_LOG(LogCamera, Error, TEXT("For frames that only have buffer (no YUV), use GetARGBBuffer() instead"));
+	}
 	return {Y, U, V, YRowStride, UVRowStride, UVPixelStride};
 }
 
@@ -95,6 +119,12 @@ void UAndroidCameraFrame::UpdateFrame(unsigned char *NewY, unsigned char *NewU, 
 									  int NewYLength, int NewULength, int NewVLength)
 {
 	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraCopyBuffer);
+
+	if(!HasYUV())
+	{
+		UE_LOG(LogCamera, Error, TEXT("For frames that only have buffer (no YUV), use UpdateFrame(int* NewARGB) instead"));
+		return;
+	}
 
 	// Lazily initialize YUV buffer
 	// TODO(dostos): move this to `Initialize` if
@@ -140,6 +170,21 @@ void UAndroidCameraFrame::UpdateFrame(unsigned char *NewY, unsigned char *NewU, 
 	IsTextureDirty = true;
 	IsBufferDirty = true;
 }
+
+void UAndroidCameraFrame::UpdateFrame(int* NewARGB) const
+{
+	if(HasYUV())
+	{
+		UE_LOG(LogCamera, Error, TEXT("For frames that have YUV buffer, use UpdateFrame(unsigned char *NewY, unsigned char *NewU, unsigned char *NewV, ...) instead"));
+		return;
+	}
+
+	// Width && Height do not change
+	std::memcpy(ARGBBuffer, NewARGB, GetPlaneSize() * 4);
+	IsTextureDirty = true;
+	IsBufferDirty = true;
+}
+
 
 inline int UAndroidCameraFrame::GetPlaneSize() const
 {

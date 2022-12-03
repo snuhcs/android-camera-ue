@@ -19,6 +19,11 @@
 			"Name": "AndroidCamera",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "VideoInput",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }

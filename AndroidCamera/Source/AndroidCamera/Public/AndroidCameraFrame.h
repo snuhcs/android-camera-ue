@@ -11,7 +11,10 @@ class ANDROIDCAMERA_API UAndroidCameraFrame : public UObject
 public:
 	virtual void BeginDestroy() override;
 
-	void Initialize(int Width, int Height);
+	void Initialize(int Width, int Height, bool hasYUV = true, EPixelFormat InFormat = PF_B8G8R8A8);
+
+	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
+	bool HasYUV() const;
 
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	int GetWidth() const;
@@ -32,13 +35,17 @@ public:
 		int UVPixelStride;
 	};
 
+	// For !HasYUV (i.e. frames that only have buffer), use GetARGBBuffer instead
 	NV12Frame GetData() const;
 
 private:
 	inline int GetPlaneSize() const;
 	void UpdateFrame(unsigned char* Y, unsigned char* U, unsigned char* V, int YRowStride, int UVRowStride, int UVPixelStride,
 		int YLength, int ULength, int VLength);
+	void UpdateFrame(int* ARGBData) const;
+	
 	friend class UAndroidCameraComponent;
+	friend class UVideoInputComponent;
 
 
 	FUpdateTextureRegion2D* UpdateTextureRegion = nullptr;
@@ -63,4 +70,6 @@ private:
 	int YRowStride;
 	int UVRowStride;
 	int UVPixelStride;
+	
+	EPixelFormat PixelFormat = PF_B8G8R8A8;
 };

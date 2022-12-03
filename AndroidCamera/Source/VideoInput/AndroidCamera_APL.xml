@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--ARToolKit plugin additions-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- init section is always evaluated once per architecture -->
+	<init>
+		<log text="AndroidCamera init"/>
+	</init>
+	
+	<androidManifestUpdates>
+		<addPermission android:name="android.permission.CAMERA"/>
+		<addFeature android:name="android.hardware.camera"/>
+		<addFeature android:name="android.hardware.camera.autofocus"/>
+	</androidManifestUpdates>
+
+  <prebuildCopies> 
+    <copyDir src="$S(PluginDir)/Java" dst="$S(BuildDir)/src/com/dostos" /> 
+  </prebuildCopies>
+
+	<!-- optional additions to the GameActivity imports in GameActivity.java -->
+	<gameActivityImportAdditions>
+		<insert>
+		import android.graphics.Bitmap;
+		import android.media.MediaMetadataRetriever;
+    </insert>
+	</gameActivityImportAdditions>
+	
+	<gameActivityClassAdditions>
+		<insert>
+			MediaMetadataRetriever mediaMetadataRetriever = null;
+			int frameId = 0;
+			<![CDATA[List<Bitmap> bitmapList = new ArrayList<Bitmap>();]]>
+			public boolean AndroidThunkJava_LoadVideo(String videoPath)
+			{
+				Log.debug("==================================> Start Load Video");
+				Log.debug("==================================> Inside Load Video " + videoPath);
+				mediaMetadataRetriever = new MediaMetadataRetriever();
+				mediaMetadataRetriever.setDataSource(this, Uri.parse(videoPath));
+				Bitmap inputImage = null;
+				if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+					inputImage = mediaMetadataRetriever.getFrameAtIndex(frameId);
+				}
+				if (inputImage == null){
+					Log.debug("==================================> End Load Video");
+					return false;
+				}
+				Log.debug("==================================> End Load Video");
+				return true;
+			}
+
+			public boolean AndroidThunkJava_GetNFrames(int N, java.nio.ByteBuffer outputBuffer){
+				Log.debug("==================================> Start GetNFrames");
+				if(mediaMetadataRetriever == null) {
+					Log.debug("Get_N_Frames: mediaMetadataRetriever is null");
+					return false;
+				}
+				
+				if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+					bitmapList = mediaMetadataRetriever.getFramesAtIndex(frameId, N);
+				}
+				<![CDATA[if(bitmapList.size() <= 0){
+						Log.debug("Get_N_Frames: SDK version doesn't support getFramesAtIndex");
+						return false;
+				}]]>
+				if(bitmapList.size() != N){
+					Log.debug("Get_N_Frames: getFramesAtIndex didn't retrieve N frames");
+					return false;
+				}
+				int width = bitmapList.get(0).getWidth();
+				int height = bitmapList.get(0).getHeight();
+<!--				Log.debug("GETNFRAMES: " + outputBuffer.length + ", " + bitmapList.size() + ", " + width + ", " + height);-->
+				Log.debug("GETNFRAMES: " + outputBuffer.capacity() + ", " + bitmapList.size() + ", " + width + ", " + height);
+<!--				if(outputBuffer.length != N * width * height){-->
+				if(outputBuffer.capacity() != N * width * height * 4){
+					Log.debug("Get_N_Frames: outputBuffer of argument is smaller or bigger than wanted size");
+					return false;
+				}
+				for(Bitmap bitmap: bitmapList){
+<!--					bitmap.getPixels(outputBuffer, frameId * width * height, width, 0, 0, width, height);-->
+					bitmap.copyPixelsToBuffer(outputBuffer);
+					frameId++;
+				}
+				Log.debug("==================================> End GetNFrames");
+				return true;
+			}
+
+
+			public boolean AndroidThunkJava_CloseVideo(){
+				if(mediaMetadataRetriever == null) {
+					Log.debug("CloseVideo: mediaMetadataRetriever is null");
+					return false;
+				}
+				mediaMetadataRetriever.release();
+				Log.debug("Successfully closed video");
+				mediaMetadataRetriever = null;
+				return true;
+			}
+    </insert>
+	</gameActivityClassAdditions>
+
+	<!-- optional additions to GameActivity onCreate in GameActivity.java -->
+	<gameActivityOnCreateAdditions>
+		<insert>
+		</insert>
+	</gameActivityOnCreateAdditions>
+
+</root>
