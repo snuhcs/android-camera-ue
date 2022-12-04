@@ -120,12 +120,6 @@ void UAndroidCameraFrame::UpdateFrame(unsigned char *NewY, unsigned char *NewU, 
 {
 	SCOPE_CYCLE_COUNTER(STAT_AndroidCameraCopyBuffer);
 
-	if(!HasYUV())
-	{
-		UE_LOG(LogCamera, Error, TEXT("For frames that only have buffer (no YUV), use UpdateFrame(int* NewARGB) instead"));
-		return;
-	}
-
 	// Lazily initialize YUV buffer
 	// TODO(dostos): move this to `Initialize` if
 	// there is a way to determine plane sizes in advance
