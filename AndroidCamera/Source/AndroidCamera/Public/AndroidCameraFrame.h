@@ -24,6 +24,9 @@ public:
 	unsigned char* GetARGBBuffer() const;
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	UTexture2D* GetTexture2D() const;
+	
+	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
+	UAndroidCameraFrame* FromTexture2D(UPARAM(ref) UTexture2D* Texture);
 
 	struct NV12Frame
 	{
@@ -52,7 +55,7 @@ private:
 
 	// Mutable temporal member ptrs for lazy update
 	mutable bool IsTextureDirty = false;
-	mutable UTexture2D* CameraTexture = nullptr;
+	mutable TWeakObjectPtr<UTexture2D> CameraTexture = nullptr;
 	mutable bool IsBufferDirty = false;
 	mutable unsigned char* ARGBBuffer = nullptr;
 

@@ -90,20 +90,26 @@ unsigned char *UAndroidCameraFrame::GetARGBBuffer() const
 
 UTexture2D *UAndroidCameraFrame::GetTexture2D() const
 {
-	if (!CameraTexture)
+	if (!CameraTexture.Get())
 	{
 		CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
 		CameraTexture->UpdateResource();
 		CameraTexture->WaitForPendingInitOrStreaming();
 	}
 	
-	if (IsTextureDirty && CameraTexture)
+	if (IsTextureDirty && CameraTexture.Get())
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AndroidCameraARGBtoTexture2D);
 		CameraTexture->UpdateTextureRegions(0, 1, UpdateTextureRegion, 4 * Width, 4, GetARGBBuffer());
 		IsTextureDirty = false;
 	}
-	return CameraTexture;
+	return CameraTexture.Get();
+}
+
+UAndroidCameraFrame* UAndroidCameraFrame::FromTexture2D(UTexture2D* Texture)
+{
+	CameraTexture = Texture;
+	return this;
 }
 
 UAndroidCameraFrame::NV12Frame UAndroidCameraFrame::GetData() const
