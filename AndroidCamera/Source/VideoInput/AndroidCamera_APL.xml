@@ -12,10 +12,6 @@
 		<addFeature android:name="android.hardware.camera.autofocus"/>
 	</androidManifestUpdates>
 
-  <prebuildCopies> 
-    <copyDir src="$S(PluginDir)/Java" dst="$S(BuildDir)/src/com/dostos" /> 
-  </prebuildCopies>
-
 	<!-- optional additions to the GameActivity imports in GameActivity.java -->
 	<gameActivityImportAdditions>
 		<insert>
@@ -31,8 +27,6 @@
 			<![CDATA[List<Bitmap> bitmapList = new ArrayList<Bitmap>();]]>
 			public boolean AndroidThunkJava_LoadVideo(String videoPath)
 			{
-				Log.debug("==================================> Start Load Video");
-				Log.debug("==================================> Inside Load Video " + videoPath);
 				mediaMetadataRetriever = new MediaMetadataRetriever();
 				mediaMetadataRetriever.setDataSource(this, Uri.parse(videoPath));
 				Bitmap inputImage = null;
@@ -40,15 +34,12 @@
 					inputImage = mediaMetadataRetriever.getFrameAtIndex(frameId);
 				}
 				if (inputImage == null){
-					Log.debug("==================================> End Load Video");
 					return false;
 				}
-				Log.debug("==================================> End Load Video");
 				return true;
 			}
 
 			public boolean AndroidThunkJava_GetNFrames(int N, java.nio.ByteBuffer outputBuffer){
-				Log.debug("==================================> Start GetNFrames");
 				if(mediaMetadataRetriever == null) {
 					Log.debug("Get_N_Frames: mediaMetadataRetriever is null");
 					return false;
@@ -62,14 +53,11 @@
 						return false;
 				}]]>
 				if(bitmapList.size() != N){
-					Log.debug("Get_N_Frames: getFramesAtIndex didn't retrieve N frames");
 					return false;
 				}
 				int width = bitmapList.get(0).getWidth();
 				int height = bitmapList.get(0).getHeight();
-<!--				Log.debug("GETNFRAMES: " + outputBuffer.length + ", " + bitmapList.size() + ", " + width + ", " + height);-->
-				Log.debug("GETNFRAMES: " + outputBuffer.capacity() + ", " + bitmapList.size() + ", " + width + ", " + height);
-<!--				if(outputBuffer.length != N * width * height){-->
+			
 				if(outputBuffer.capacity() != N * width * height * 4){
 					Log.debug("Get_N_Frames: outputBuffer of argument is smaller or bigger than wanted size");
 					return false;
@@ -79,7 +67,6 @@
 					bitmap.copyPixelsToBuffer(outputBuffer);
 					frameId++;
 				}
-				Log.debug("==================================> End GetNFrames");
 				return true;
 			}
 

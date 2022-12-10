@@ -38,7 +38,7 @@ public:
 	virtual void ShutdownModule() override;
 	
 	static FAndroidCameraModule &Get();
-	void RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight);
+	void RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight, int DesiredFPS);
 	void ActivateComponent(int CameraId, int PreviewWidth, int PreviewHeight, int CameraRotation);
 	void UnregisterComponent(int CameraId);
 

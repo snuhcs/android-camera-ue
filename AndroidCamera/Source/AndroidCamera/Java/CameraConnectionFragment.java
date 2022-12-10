@@ -49,6 +49,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.LayoutInflater;
@@ -132,6 +133,7 @@ public class CameraConnectionFragment extends Fragment {
   private Integer sensorOrientation;
   /** The {@link Size} of camera preview. */
   private Size previewSize;
+  private int desiredFPS;
   /** An additional thread for running tasks that shouldn't block the UI. */
   private HandlerThread backgroundThread;
   /** A {@link Handler} for running tasks in the background. */
@@ -176,10 +178,12 @@ public class CameraConnectionFragment extends Fragment {
   private CameraConnectionFragment(
       final ConnectionCallback connectionCallback,
       final OnImageAvailableListener imageListener,
-      final Size inputSize) {
+      final Size inputSize,
+      final int desiredFPS) {
     this.cameraConnectionCallback = connectionCallback;
     this.imageListener = imageListener;
     this.inputSize = inputSize;
+    this.desiredFPS = desiredFPS;
   }
 
   public int getCameraId() {
@@ -239,8 +243,9 @@ public class CameraConnectionFragment extends Fragment {
   public static CameraConnectionFragment newInstance(
       final ConnectionCallback callback,
       final OnImageAvailableListener imageListener,
-      final Size inputSize) {
-    return new CameraConnectionFragment(callback, imageListener, inputSize);
+      final Size inputSize,
+      final int desiredFPS) {
+    return new CameraConnectionFragment(callback, imageListener, inputSize, desiredFPS);
   }
 
   /**
@@ -509,6 +514,9 @@ public class CameraConnectionFragment extends Fragment {
               // When the session is ready, we start displaying the preview.
               captureSession = cameraCaptureSession;
               try {
+                Range<Integer> ranges = previewRequestBuilder.get(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE);
+                Log.i(TAG,"Available FPS Range: " + ranges.getLower() + "," + ranges.getUpper() + " Use target: " + desiredFPS);
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range.create(desiredFPS, desiredFPS));
                 // Auto focus should be continuous for camera preview.
                 previewRequestBuilder.set(
                     CaptureRequest.CONTROL_AF_MODE,

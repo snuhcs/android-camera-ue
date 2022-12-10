@@ -20,10 +20,10 @@
 	<gameActivityImportAdditions>
 		<insert>
       
-			import android.media.Image;
-			import android.media.ImageReader;
-      import android.util.Size;
-      import com.dostos.CameraConnectionFragment;
+	import android.media.Image;
+	import android.media.ImageReader;
+	import android.util.Size;
+	import com.dostos.CameraConnectionFragment;
     </insert>
 	</gameActivityImportAdditions>
 	
@@ -34,13 +34,12 @@
       				ByteBuffer y, ByteBuffer u, ByteBuffer v,
 					int yRowStride, int uvRowStride, int uvPixelStride,
 					int yLength, int uLength, int vLength,
-					int width, int height);
-				
-			public native void OnCameraStart(int cameraId, int previewWidth, int previewHeight, int cameraRotation);
+					int width, int height); 
+	  public native void OnCameraStart(int cameraId, int previewWidth, int previewHeight, int cameraRotation);
 			
       CameraConnectionFragment cameraConnectionFragment = null;
 
-      public void AndroidThunkJava_Camera_Start(int desiredPreviewWidth, int desiredPreviewHeight)
+      public void AndroidThunkJava_Camera_Start(int desiredPreviewWidth, int desiredPreviewHeight, int desiredFPS)
       {
 		  cameraConnectionFragment = CameraConnectionFragment.newInstance(
 				  new CameraConnectionFragment.ConnectionCallback() {
@@ -65,10 +64,7 @@
 								image.close();
 							}
 					  }
-				  }, new Size(desiredPreviewWidth, desiredPreviewHeight)
-
-		  );
-
+				  }, new Size(desiredPreviewWidth, desiredPreviewHeight), desiredFPS);
 		  getFragmentManager().beginTransaction().attach(cameraConnectionFragment).commit();
       };
 
@@ -78,7 +74,7 @@
       	if (cameraConnectionFragment != null) {
           getFragmentManager().beginTransaction().remove(cameraConnectionFragment).commit();
           cameraConnectionFragment = null;
-		    }
+		}
       }
     </insert>
 	</gameActivityClassAdditions>

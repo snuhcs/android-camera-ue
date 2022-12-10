@@ -21,7 +21,7 @@ public:
 	void ActivateComponent(int CameraId, int PreviewWidth, int PreviewHeight, int CameraRotation);
 
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
-	void StartCamera(int DesiredWidth, int DesiredHeight);
+	void StartCamera(int DesiredWidth, int DesiredHeight, int DesiredFPS = 30);
 	UFUNCTION(BlueprintCallable, Category = AndroidCamera)
 	void EndCamera();
 

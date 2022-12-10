@@ -32,12 +32,12 @@ void UAndroidCameraComponent::ActivateComponent(int TargetCameraId, int PreviewW
 	CameraFrame->Initialize(PreviewWidth, PreviewHeight);
 }
 
-void UAndroidCameraComponent::StartCamera(int DesiredWidth, int DesiredHeight)
+void UAndroidCameraComponent::StartCamera(int DesiredWidth, int DesiredHeight, int DesiredFPS)
 {
 	if (!bRegistered)
 	{
-		UE_LOG(LogCamera, Display, TEXT("StartCamera desired size %dx%d"), DesiredWidth, DesiredHeight);
-		FAndroidCameraModule::Get().RegisterComponent(*this, DesiredWidth, DesiredHeight);
+		UE_LOG(LogCamera, Display, TEXT("StartCamera desired size %dx%d, FPS %d"), DesiredWidth, DesiredHeight, DesiredFPS);
+		FAndroidCameraModule::Get().RegisterComponent(*this, DesiredWidth, DesiredHeight, DesiredFPS);
 		bRegistered = true;
 	}
 }

@@ -18,12 +18,12 @@ DEFINE_STAT(STAT_AndroidCameraCopyBuffer);
 
 #define LOG_TAG "AndroidCamera"
 
-void  AndroidThunkCpp_Camera_Start(int DesiredWidth, int DesiredHeight)
+void  AndroidThunkCpp_Camera_Start(int DesiredWidth, int DesiredHeight, int DesiredFPS)
 {
 	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
 	{
-		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_Camera_Start", "(II)V", false);
-		FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, Method, DesiredWidth, DesiredHeight);
+		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_Camera_Start", "(III)V", false);
+		FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, Method, DesiredWidth, DesiredHeight, DesiredFPS);
 	}
 }
 
@@ -83,12 +83,12 @@ FAndroidCameraModule& FAndroidCameraModule::Get()
 	return *reinterpret_cast<FAndroidCameraModule*>(FModuleManager::Get().GetModule("AndroidCamera"));
 }
 
-void FAndroidCameraModule::RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight)
+void FAndroidCameraModule::RegisterComponent(UAndroidCameraComponent& Component, int DesiredWidth, int DesiredHeight, int DesiredFPS)
 {
 	PendingComponents.push(&Component);
 	// TODO(dostos): Pass token to find corresponding OnCameraStart for multiple camera support 
 #if PLATFORM_ANDROID
-	AndroidThunkCpp_Camera_Start(DesiredWidth, DesiredHeight);
+	AndroidThunkCpp_Camera_Start(DesiredWidth, DesiredHeight, DesiredFPS);
 #endif
 
 }
