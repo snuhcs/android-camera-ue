@@ -22,9 +22,8 @@ UE_TRACE_CHANNEL_EXTERN(TraceAndroidCameraChannel, ANDROIDCAMERA_API)
 #define UE_SCOPED_ANDROIDCAMERATIMER_AND_DURATION(name, durationStorage) \
 FScopedDurationTimer name##Timer(durationStorage); UE_SCOPED_COOKTIMER(name)
 
-struct FAndroidCameraTraceReporter
-{
-	static void ReportOnCameraFrame(int32 CameraId);
+struct FAndroidCameraTraceReporter {
+  static void ReportOnCameraFrame(int32 CameraId);
 };
 
 

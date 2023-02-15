@@ -49,70 +49,65 @@ bool AndroidThunkCpp_CloseVideo()
 
 DEFINE_LOG_CATEGORY(LogVideo);
 
-void FVideoInputModule::StartupModule()
-{
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	UE_LOG(LogVideo, Display, TEXT("VideoInputModule: StartupModule"));
+void FVideoInputModule::StartupModule() {
+  // This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+  UE_LOG(LogVideo, Display, TEXT("VideoInputModule: StartupModule"));
 }
 
-void FVideoInputModule::ShutdownModule()
-{
-	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
-	// we call this function before unloading the module.
-	UE_LOG(LogVideo, Display, TEXT("VideoInputModule: ShutdownModule"));
-	// UnregisterComponent(IdComponents.first);	
+void FVideoInputModule::ShutdownModule() {
+  // This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
+  // we call this function before unloading the module.
+  UE_LOG(LogVideo, Display, TEXT("VideoInputModule: ShutdownModule"));
+  // UnregisterComponent(IdComponents.first);	
 }
 
-FVideoInputModule& FVideoInputModule::Get()
-{
-	return *reinterpret_cast<FVideoInputModule*>(FModuleManager::Get().GetModule("VideoInput"));
+FVideoInputModule& FVideoInputModule::Get() {
+  return *reinterpret_cast<FVideoInputModule*>(FModuleManager::Get().GetModule(
+      "VideoInput"));
 }
 
-bool FVideoInputModule::RegisterComponent(FString VideoPath)
-{
+bool FVideoInputModule::RegisterComponent(FString VideoPath) {
 #if PLATFORM_ANDROID
 	return AndroidThunkCpp_LoadVideo(VideoPath);
 #endif
-	UE_LOG(LogVideo, Display, TEXT("Can't load video: Platform isn't ANDROID."));
-	return false;
+  UE_LOG(LogVideo, Display, TEXT("Can't load video: Platform isn't ANDROID."));
+  return false;
 }
 
-bool FVideoInputModule::UnregisterComponent()
-{
+bool FVideoInputModule::UnregisterComponent() {
 #if PLATFORM_ANDROID
 	return AndroidThunkCpp_CloseVideo();
 #endif
-	UE_LOG(LogVideo, Display, TEXT("Can't close video: Platform isn't ANDROID."));
-	return false;
+  UE_LOG(LogVideo, Display, TEXT("Can't close video: Platform isn't ANDROID."));
+  return false;
 }
 
-bool FVideoInputModule::CallJava_LoadVideo(FString Path)
-{
+bool FVideoInputModule::CallJava_LoadVideo(FString Path) {
 #if PLATFORM_ANDROID
 	return AndroidThunkCpp_LoadVideo(Path);
 #endif
-	UE_LOG(LogVideo, Display, TEXT("Can't load video: Platform isn't ANDROID"));
-	return false;
+  UE_LOG(LogVideo, Display, TEXT("Can't load video: Platform isn't ANDROID"));
+  return false;
 }
 
-bool FVideoInputModule::CallJava_GetNFrames(int N, int W, int H, int* OutputBuffer)
-{
+bool FVideoInputModule::CallJava_GetNFrames(int N, int W, int H,
+                                            int* OutputBuffer) {
 #if PLATFORM_ANDROID
 	return AndroidThunkCpp_GetNFrames(N, W, H, OutputBuffer);
 #endif
-	UE_LOG(LogVideo, Display, TEXT("Can't get n frames: Platform isn't ANDROID."));
-	return false;
+  UE_LOG(LogVideo, Display,
+         TEXT("Can't get n frames: Platform isn't ANDROID."));
+  return false;
 }
 
-bool FVideoInputModule::CallJava_CloseVideo()
-{
+bool FVideoInputModule::CallJava_CloseVideo() {
 #if PLATFORM_ANDROID
 	return AndroidThunkCpp_CloseVideo();
 #endif
-	UE_LOG(LogVideo, Display, TEXT("Can't close video: Platform isn't ANDROID"));
-	return false;
+  UE_LOG(LogVideo, Display, TEXT("Can't close video: Platform isn't ANDROID"));
+  return false;
 }
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FVideoInputModule, VideoInput)

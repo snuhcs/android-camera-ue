@@ -161,8 +161,7 @@ void android_request_permission(struct android_app *app, const char *permission)
 
 #endif
 
-void check_android_permission(const char *permission)
-{
+void check_android_permission(const char* permission) {
 #if PLATFORM_ANDROID
     bool OK = android_has_permission(
         GNativeAndroidApp, permission);

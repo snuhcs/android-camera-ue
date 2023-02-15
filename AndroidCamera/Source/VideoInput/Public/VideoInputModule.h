@@ -23,23 +23,20 @@ Frame pipeline
 3. UAndroidCameraComponent broadcasts OnFrameAvailable delegate
 */
 
-class FVideoInputModule : public IModuleInterface
-{
+class FVideoInputModule : public IModuleInterface {
 public:
+  /** IModuleInterface implementation */
+  virtual void StartupModule() override;
+  virtual void ShutdownModule() override;
 
-	/** IModuleInterface implementation */
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
+  static FVideoInputModule& Get();
 
-	static FVideoInputModule &Get();
-	
-	bool RegisterComponent(FString VideoPath);
-	bool UnregisterComponent();
+  bool RegisterComponent(FString VideoPath);
+  bool UnregisterComponent();
 
-	bool CallJava_LoadVideo(FString Path);
-	bool CallJava_GetNFrames(int N, int W, int H, int* OutputBuffer);
-	bool CallJava_CloseVideo();
+  bool CallJava_LoadVideo(FString Path);
+  bool CallJava_GetNFrames(int N, int W, int H, int* OutputBuffer);
+  bool CallJava_CloseVideo();
 
 private:
-
 };
