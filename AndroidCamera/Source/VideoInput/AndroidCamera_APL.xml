@@ -39,6 +39,30 @@
 			}
 			return true;
 			}
+			
+			public int AndroidThunkJava_GetFrameCount(){
+				if(mediaMetadataRetriever == null) {
+					Log.debug("GetFrameCount: mediaMetadataRetriever is null");
+					return -1;
+				}
+				return Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+			}
+
+			public int AndroidThunkJava_GetVideoHeight(){
+			if(mediaMetadataRetriever == null) {
+			Log.debug("GetImageHeight: mediaMetadataRetriever is null");
+			return -1;
+			}
+			return Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+			}
+
+			public int AndroidThunkJava_GetVideoWidth(){
+			if(mediaMetadataRetriever == null) {
+			Log.debug("GetImageWidth: mediaMetadataRetriever is null");
+			return -1;
+			}
+			return Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+			}
 
 			public boolean AndroidThunkJava_GetNFrames(int N, java.nio.ByteBuffer outputBuffer){
 			if(mediaMetadataRetriever == null) {

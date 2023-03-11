@@ -22,9 +22,7 @@ class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
 public:
   // Step 1.
   UFUNCTION(BlueprintCallable, Category = VideoInput)
-  void Initialize(FString path, int w, int h, int totalFrameCnt,
-                  int blockFrameCnt, int buffFrameCnt, float remainingPercent,
-                  int64 frameDuration);
+  void Initialize(FString path, int64 frameDuration);
 
   // UFUNCTION(BlueprintCallable, Category = VideoInput)
   // void StartVideo();

@@ -8,7 +8,6 @@ void UVideoInputComponent::BeginPlay() {
          TEXT("UVideoInputComponent BeginPlay! Don't forget to OpenVideo"));
 }
 
-
 void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   Super::EndPlay(EndPlayReason);
   UE_LOG(LogVideo, Display,
@@ -17,14 +16,10 @@ void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   KillEngine();
 }
 
-void UVideoInputComponent::Initialize(FString path, int w, int h,
-                                      int totalFrameCnt, int blockFrameCnt,
-                                      int buffFrameCnt, float remainingPercent,
-                                      int64 frameDuration) {
+void UVideoInputComponent::Initialize(FString path, int64 frameDuration) {
   UE_LOG(LogVideo, Display,
-         TEXT(
-           "TotalFrameCnt must be divisble by BufferFrameCnt && BufferFrameCnt must be divisible by BlockFrameCnt."
-         ))
+         TEXT("TotalFrameCnt must be divisble by BufferFrameCnt && "
+              "BufferFrameCnt must be divisible by BlockFrameCnt."))
 
   VideoFilePath = path;
   if (!FVideoInputModule::Get().CallJava_LoadVideo(VideoFilePath)) {
@@ -34,28 +29,38 @@ void UVideoInputComponent::Initialize(FString path, int w, int h,
     return;
   }
   RequireFetch = true;
-  // No need to access with mutex because StartVideo writes first before any other function
+  // No need to access with mutex because StartVideo writes first before any
+  // other function
 
-  W = w;
-  H = h;
+  TotalFrameCnt = FVideoInputModule::Get().CallJava_GetFrameCount();
+  if (TotalFrameCnt < 0) {
+    UE_LOG(
+        LogVideo, Display,
+        TEXT("Coudn't get frame count of video... Make sure video is loaded"));
+    return;
+  }
+  W = FVideoInputModule::Get().CallJava_GetVideoWidth();
+  H = FVideoInputModule::Get().CallJava_GetVideoHeight();
+  if (W < 0 || H < 0) {
+    UE_LOG(LogVideo, Display,
+           TEXT("Coudn't get video size... Make sure video is loaded"));
+    return;
+  }
 
-  TotalFrameCnt = totalFrameCnt;
-  BatchFrameCnt = blockFrameCnt;
-
-  BufferFrameCnt = buffFrameCnt;
+  BufferFrameCnt = 0.25 * TotalFrameCnt;
+  BatchFrameCnt = BufferFrameCnt * 0.5;
   BufferSize = BufferFrameCnt * W * H;
   Buffer.resize(BufferSize);
 
-  RemainingPercent = remainingPercent;
+  RemainingPercent = 0.3;
   FrameDuration = frameDuration;
 
   CameraFrame = NewObject<UAndroidCameraFrame>(this);
-  CameraFrame->Initialize(w, h, false, PF_R8G8B8A8);
+  CameraFrame->Initialize(W, H, false, PF_R8G8B8A8);
 
   FetchThread = std::thread([this] { this->FetchLoop(); });
   ConsumeThread = std::thread([this] { this->ConsumeLoop(); });
 }
-
 
 void UVideoInputComponent::KillEngine() {
   CameraFrame = nullptr;
@@ -73,15 +78,13 @@ void UVideoInputComponent::KillEngine() {
   FVideoInputModule::Get().CallJava_CloseVideo();
 }
 
-
 void UVideoInputComponent::FetchLoop() {
   while (true) {
     // Wait for fetch signal (fetch directly only at beginning)
     {
       std::unique_lock<std::mutex> FetchLock(FetchSignalMtx);
-      FetchSignalCV.wait(FetchLock, [this] {
-        return KillThread || RequireFetch;
-      });
+      FetchSignalCV.wait(FetchLock,
+                         [this] { return KillThread || RequireFetch; });
       RequireFetch = false;
       // FetchLock.unlock();
     }
@@ -92,7 +95,7 @@ void UVideoInputComponent::FetchLoop() {
     UE_LOG(LogVideo, Display, TEXT("Fetching frames %d ~ %d"), FetchHead,
            FetchHead + BatchFrameCnt);
     if (FVideoInputModule::Get().CallJava_GetNFrames(
-        BatchFrameCnt, W, H, &Buffer[FrameToInt(FetchHead)])) {
+            BatchFrameCnt, W, H, &Buffer[FrameToInt(FetchHead)])) {
       UE_LOG(LogVideo, Display, TEXT("Successfully fetched frames!"));
       FetchHead += BatchFrameCnt;
     } else {
@@ -120,9 +123,8 @@ void UVideoInputComponent::ConsumeLoop() {
     // Wait for Consume signal (wait even at beginning)
     {
       std::unique_lock<std::mutex> ConsumeLock(ConsumeSignalMtx);
-      ConsumeSignalCV.wait(ConsumeLock, [this] {
-        return KillThread || CanConsume;
-      });
+      ConsumeSignalCV.wait(ConsumeLock,
+                           [this] { return KillThread || CanConsume; });
       CanConsume = false;
       // ConsumeLock.unlock();
     }
@@ -171,18 +173,16 @@ int UVideoInputComponent::FrameToInt(int frame) const {
   return rangeStart;
 }
 
-
 void UVideoInputComponent::BroadcastImageAvailability(int Idx) {
   if (OnFrameAvailable.IsBound() || OnFrameAvailableDynamic.IsBound()) {
     CameraFrame->UpdateFrame(&Buffer[FrameToInt(Idx)]);
 
-    AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask, [&]() {
-      OnFrameAvailable.Broadcast(CameraFrame);
-    });
+    AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask,
+              [&]() { OnFrameAvailable.Broadcast(CameraFrame); });
 
     // This code is on a Java thread
-    FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
-      OnFrameAvailableDynamic.Broadcast(CameraFrame);
-    }, TStatId(), nullptr, ENamedThreads::GameThread);
+    FFunctionGraphTask::CreateAndDispatchWhenReady(
+        [&]() { OnFrameAvailableDynamic.Broadcast(CameraFrame); }, TStatId(),
+        nullptr, ENamedThreads::GameThread);
   }
 }

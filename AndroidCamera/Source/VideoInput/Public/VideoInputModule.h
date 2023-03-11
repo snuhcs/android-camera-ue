@@ -9,7 +9,8 @@ class UVideoInputComponent;
 
 /*
 VideoInputModule that manages video input components
-and communicates with Java side MediaMetadataRetriever (CameraConnectionFragment)
+and communicates with Java side MediaMetadataRetriever
+(CameraConnectionFragment)
 
 Usage pipeline
 1. Load video (UVideoInputComponent)
@@ -18,13 +19,14 @@ Usage pipeline
 
 TODO(@juimdpp) Modify below
 Frame pipeline
-1. CameraConnectionFragment calls jni interface on frame arrival (OnImageAvailable)
+1. CameraConnectionFragment calls jni interface on frame arrival
+(OnImageAvailable)
 2. FAndroidCameraModule sends specific event to corresponding component
 3. UAndroidCameraComponent broadcasts OnFrameAvailable delegate
 */
 
 class FVideoInputModule : public IModuleInterface {
-public:
+ public:
   /** IModuleInterface implementation */
   virtual void StartupModule() override;
   virtual void ShutdownModule() override;
@@ -35,8 +37,11 @@ public:
   bool UnregisterComponent();
 
   bool CallJava_LoadVideo(FString Path);
+  int CallJava_GetFrameCount();
+  int CallJava_GetVideoHeight();
+  int CallJava_GetVideoWidth();
   bool CallJava_GetNFrames(int N, int W, int H, int* OutputBuffer);
   bool CallJava_CloseVideo();
 
-private:
+ private:
 };
