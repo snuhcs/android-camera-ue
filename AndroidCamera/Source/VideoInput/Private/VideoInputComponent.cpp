@@ -129,7 +129,8 @@ void UVideoInputComponent::FetchLoop() {
 
     // Terminate FetchThread if FetchEngine fetched all frames
     if (FetchHead >= TotalFrameCnt) {
-      UE_LOG(LogVideo, Display, TEXT("Fetched all frames"));
+      UE_LOG(LogVideo, Display, TEXT("Fetched all frames. Closing video..."));
+      FVideoInputModule::Get().CallJava_CloseVideo();
       return;
     }
   }
