@@ -55,7 +55,6 @@ void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight,
   ARGBBuffer = new unsigned char[GetPlaneSize() * 4];
 }
 
-
 int UAndroidCameraFrame::GetWidth() const {
   return Width;
 }
@@ -96,6 +95,8 @@ UTexture2D* UAndroidCameraFrame::GetTexture2D() const {
 
 UAndroidCameraFrame* UAndroidCameraFrame::FromTexture2D(UTexture2D* Texture) {
   CameraTexture = Texture;
+  Height = Texture->GetSizeX();
+  Width = Texture->GetSizeY();
   return this;
 }
 

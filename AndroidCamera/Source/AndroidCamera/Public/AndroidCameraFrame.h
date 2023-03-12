@@ -59,8 +59,8 @@ private:
   mutable bool IsBufferDirty = false;
   mutable unsigned char* ARGBBuffer = nullptr;
 
-  int Width;
-  int Height;
+  int Width = 0;
+  int Height = 0;
 
   uint8* Y = nullptr;
   uint8* U = nullptr;
