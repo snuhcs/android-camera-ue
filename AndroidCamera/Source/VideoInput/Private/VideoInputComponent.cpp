@@ -16,10 +16,11 @@ void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   KillEngine();
 }
 
-void UVideoInputComponent::Initialize(FString path, int64 frameDuration) {
+void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
+                                      bool instantStart) {
   UE_LOG(LogVideo, Display,
          TEXT("TotalFrameCnt must be divisble by BufferFrameCnt && "
-              "BufferFrameCnt must be divisible by BlockFrameCnt."))
+           "BufferFrameCnt must be divisible by BlockFrameCnt."))
 
   VideoFilePath = path;
   if (!FVideoInputModule::Get().CallJava_LoadVideo(VideoFilePath)) {
@@ -29,6 +30,7 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration) {
     return;
   }
   RequireFetch = true;
+  IsStarted = false;
   // No need to access with mutex because StartVideo writes first before any
   // other function
 
@@ -58,8 +60,23 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration) {
   CameraFrame = NewObject<UAndroidCameraFrame>(this);
   CameraFrame->Initialize(W, H, false, PF_R8G8B8A8);
 
-  FetchThread = std::thread([this] { this->FetchLoop(); });
-  ConsumeThread = std::thread([this] { this->ConsumeLoop(); });
+  if (instantStart) {
+    StartVideo();
+  }
+}
+
+void UVideoInputComponent::StartVideo() {
+  if (!IsStarted) {
+    FetchThread = std::thread([this] { this->FetchLoop(); });
+    ConsumeThread = std::thread([this] { this->ConsumeLoop(); });
+    IsStarted = true;
+  } else {
+    UE_LOG(LogVideo, Display, TEXT("Video already started!"));
+  }
+}
+
+int UVideoInputComponent::GetTotalFrameCount() const {
+  return TotalFrameCnt;
 }
 
 void UVideoInputComponent::KillEngine() {
@@ -95,7 +112,7 @@ void UVideoInputComponent::FetchLoop() {
     UE_LOG(LogVideo, Display, TEXT("Fetching frames %d ~ %d"), FetchHead,
            FetchHead + BatchFrameCnt);
     if (FVideoInputModule::Get().CallJava_GetNFrames(
-            BatchFrameCnt, W, H, &Buffer[FrameToInt(FetchHead)])) {
+        BatchFrameCnt, W, H, &Buffer[FrameToInt(FetchHead)])) {
       UE_LOG(LogVideo, Display, TEXT("Successfully fetched frames!"));
       FetchHead += BatchFrameCnt;
     } else {

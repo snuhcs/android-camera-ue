@@ -22,13 +22,14 @@ class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
 public:
   // Step 1.
   UFUNCTION(BlueprintCallable, Category = VideoInput)
-  void Initialize(FString path, int64 frameDuration);
+  void Initialize(FString path, int64 frameDuration, bool instantStart = false);
 
-  // UFUNCTION(BlueprintCallable, Category = VideoInput)
-  // void StartVideo();
-  //
-  // UFUNCTION(BlueprintCallable, Category = VideoInput)
-  // void CloseVideo();
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  void StartVideo();
+
+
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  int GetTotalFrameCount() const;
 
   UPROPERTY(BlueprintAssignable, Category = VideoInput)
   FOnFrameAvailableDelegateDynamic OnFrameAvailableDynamic;
@@ -76,4 +77,5 @@ private:
   std::condition_variable ConsumeSignalCV;
   std::mutex ConsumeSignalMtx;
   bool CanConsume = false;
+  bool IsStarted = false;
 };
