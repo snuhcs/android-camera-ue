@@ -50,11 +50,11 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
   }
 
   BufferFrameCnt = 0.25 * TotalFrameCnt;
-  BatchFrameCnt = BufferFrameCnt * 0.5;
+  BatchFrameCnt = BufferFrameCnt * 0.2;
   BufferSize = BufferFrameCnt * W * H;
   Buffer.resize(BufferSize);
 
-  RemainingPercent = 0.3;
+  RemainingPercent = 0.8;
   FrameDuration = frameDuration;
 
   CameraFrame = NewObject<UAndroidCameraFrame>(this);
