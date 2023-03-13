@@ -4,24 +4,15 @@
 
 void UVideoInputComponent::BeginPlay() {
   Super::BeginPlay();
-  UE_LOG(LogVideo, Display,
-         TEXT("UVideoInputComponent BeginPlay! Don't forget to OpenVideo"));
 }
 
 void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   Super::EndPlay(EndPlayReason);
-  UE_LOG(LogVideo, Display,
-         TEXT("UVideoInputComponent EndPlay! Killing FetchEngine..."));
-
   KillEngine();
 }
 
 void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
                                       bool instantStart) {
-  UE_LOG(LogVideo, Display,
-         TEXT("TotalFrameCnt must be divisble by BufferFrameCnt && "
-           "BufferFrameCnt must be divisible by BlockFrameCnt."))
-
   VideoFilePath = path;
   if (!FVideoInputModule::Get().CallJava_LoadVideo(VideoFilePath)) {
     UE_LOG(LogVideo, Display,
@@ -81,18 +72,18 @@ int UVideoInputComponent::GetTotalFrameCount() const {
 
 void UVideoInputComponent::KillEngine() {
   CameraFrame = nullptr;
-
   KillThread = true;
-  FetchSignalCV.notify_all();
-  ConsumeSignalCV.notify_all();
-  if (ConsumeThread.joinable()) {
-    ConsumeThread.join();
+  if (IsStarted) {
+    FetchSignalCV.notify_all();
+    ConsumeSignalCV.notify_all();
+    if (ConsumeThread.joinable()) {
+      ConsumeThread.join();
+    }
+    if (FetchThread.joinable()) {
+      FetchThread.join();
+    }
+    FVideoInputModule::Get().CallJava_CloseVideo();
   }
-  if (FetchThread.joinable()) {
-    FetchThread.join();
-  }
-
-  FVideoInputModule::Get().CallJava_CloseVideo();
 }
 
 void UVideoInputComponent::FetchLoop() {
