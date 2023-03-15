@@ -104,6 +104,7 @@
 			mediaMetadataRetriever.release();
 			Log.debug("Successfully closed video");
 			mediaMetadataRetriever = null;
+			frameId = 0;
 			return true;
 			}
 		</insert>
