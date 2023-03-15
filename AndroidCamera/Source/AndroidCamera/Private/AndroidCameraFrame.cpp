@@ -165,6 +165,11 @@ void UAndroidCameraFrame::UpdateFrame(int* NewARGB) const {
     return;
   }
 
+  if (NewARGB == nullptr) {
+    UE_LOG(LogCamera, Error, TEXT("NewARGB is null"));
+    return;
+  }
+
   // Width && Height do not change
   std::memcpy(ARGBBuffer, NewARGB, GetPlaneSize() * 4);
   IsTextureDirty = true;
