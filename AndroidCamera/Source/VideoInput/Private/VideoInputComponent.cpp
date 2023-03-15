@@ -1,4 +1,4 @@
-﻿#include "VideoInputComponent.h"
+#include "VideoInputComponent.h"
 
 #include <cassert>
 
@@ -40,7 +40,7 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
     return;
   }
 
-  BufferFrameCnt = 0.25 * TotalFrameCnt;
+  BufferFrameCnt = 150;
   BatchFrameCnt = BufferFrameCnt * 0.2;
   BufferSize = BufferFrameCnt * W * H;
   Buffer.resize(BufferSize);
@@ -102,8 +102,13 @@ void UVideoInputComponent::FetchLoop() {
 
     UE_LOG(LogVideo, Display, TEXT("Fetching frames %d ~ %d"), FetchHead,
            FetchHead + BatchFrameCnt);
+    int NumFrames = BatchFrameCnt;
+    if(FetchHead + BatchFrameCnt > TotalFrameCnt)
+    {
+      NumFrames = TotalFrameCnt - FetchHead;
+    }
     if (FVideoInputModule::Get().CallJava_GetNFrames(
-        BatchFrameCnt, W, H, &Buffer[FrameToInt(FetchHead)])) {
+        NumFrames, W, H, &Buffer[FrameToInt(FetchHead)])) {
       UE_LOG(LogVideo, Display, TEXT("Successfully fetched frames!"));
       FetchHead += BatchFrameCnt;
     } else {
