@@ -18,6 +18,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFrameAvailableDelegateDynamic,
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnFrameAvailableDelegate,
                                     const UAndroidCameraFrame*);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVideoEndDelegateDynamic,
+                                            FString,
+                                            Filepath);
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnVideoEndDelegate,
+                                    FString /* Video file path */);
+
 UCLASS(ClassGroup = (VideoInput), meta = (BlueprintSpawnableComponent))
 class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
   GENERATED_BODY()
@@ -46,6 +53,11 @@ public:
   // CAUTION: This delegate doesn't guarantee access from game thread
   FOnFrameAvailableDelegate OnFrameAvailable;
 
+  UPROPERTY(BlueprintAssignable, Category = VideoInput)
+  FOnVideoEndDelegateDynamic OnVideoEndDynamic;
+  // CAUTION: This delegate doesn't guarantee access from game thread
+  FOnVideoEndDelegate OnVideoEnd;
+
   void KillEngine();
 
 protected:
@@ -54,12 +66,13 @@ protected:
 
 private:
   void BroadcastImageAvailability(int Idx);
+  void BroadcastEndVideo();
 
 
   UAndroidCameraFrame* GetCameraFrame();
   // simple circular buffer
   // UAndroidCameraFrame* is safe from UE GC as it belongs to this component
-  std::array<UAndroidCameraFrame*, 5> CameraFrames;
+  std::array<UAndroidCameraFrame*, 10> CameraFrames;
 
   // FetchEngine related:
   void FetchLoop();

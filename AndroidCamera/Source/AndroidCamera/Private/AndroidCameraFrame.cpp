@@ -56,18 +56,18 @@ void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight,
   ARGBBuffer = new unsigned char[GetPlaneSize() * 4];
 
   if (CreateTexture) {
-    if (IsInGameThread()) {
-      CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
-      CameraTexture->UpdateResource();
-      CameraTexture->WaitForPendingInitOrStreaming();
-    } else {
-      UE_LOG(LogCamera, Error,
-             TEXT(
-               "CameraTexture should be created in the game thread. Use CreateTexture2DAsync instead"
-             ));
-    }
+    auto handle = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
+        CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
+        CameraTexture->UpdateResource();
+        CameraTexture->WaitForPendingInitOrStreaming();
+      },
+      TStatId(), nullptr,
+      ENamedThreads::GameThread);
+
+    handle->Wait();
   }
 }
+
 
 int UAndroidCameraFrame::GetWidth() const {
   return Width;

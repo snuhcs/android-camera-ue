@@ -140,6 +140,7 @@ void UVideoInputComponent::FetchLoop() {
 
     // Terminate FetchThread if FetchEngine fetched all frames
     if (FetchHead >= TotalFrameCnt) {
+      BroadcastEndVideo();
       UE_LOG(LogVideo, Display, TEXT("Fetched all frames. Closing video..."));
       Status = EVideoStatus::FINISHED;
       FVideoInputModule::Get().CallJava_CloseVideo();
@@ -215,6 +216,19 @@ void UVideoInputComponent::BroadcastImageAvailability(int Idx) {
     FFunctionGraphTask::CreateAndDispatchWhenReady(
         [&]() { OnFrameAvailableDynamic.Broadcast(CameraFrame); }, TStatId(),
         nullptr, ENamedThreads::GameThread);
+  }
+}
+
+void UVideoInputComponent::BroadcastEndVideo() {
+  if (OnVideoEnd.IsBound() || OnVideoEndDynamic.IsBound()) {
+    AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask,
+              [&]() { OnVideoEnd.Broadcast(VideoFilePath); });
+
+    // This code is on a Java thread
+    FFunctionGraphTask::CreateAndDispatchWhenReady(
+        [&]() { OnVideoEndDynamic.Broadcast(VideoFilePath); }, TStatId(),
+        nullptr,
+        ENamedThreads::GameThread);
   }
 }
 
