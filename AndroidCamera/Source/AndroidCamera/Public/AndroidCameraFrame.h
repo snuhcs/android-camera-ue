@@ -4,14 +4,17 @@
 #include "AndroidCameraFrame.generated.h"
 
 class UAndroidCameraComponent;
+
 UCLASS(Blueprintable)
 class ANDROIDCAMERA_API UAndroidCameraFrame : public UObject {
   GENERATED_BODY()
+
 public:
   virtual void BeginDestroy() override;
 
   void Initialize(int Width, int Height, bool hasYUV = true,
-                  EPixelFormat InFormat = PF_B8G8R8A8);
+                  EPixelFormat InFormat = PF_B8G8R8A8,
+                  bool CreateTexture = false);
 
   UFUNCTION(BlueprintCallable, Category = AndroidCamera)
   bool HasYUV() const;

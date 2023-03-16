@@ -40,7 +40,8 @@ void UAndroidCameraFrame::BeginDestroy() {
 
 void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight,
                                      const bool hasYUV,
-                                     const EPixelFormat InFormat) {
+                                     const EPixelFormat InFormat,
+                                     bool CreateTexture) {
   UpdateTextureRegion = new FUpdateTextureRegion2D(
       0, 0, 0, 0, PreviewWidth, PreviewHeight);
 
@@ -53,6 +54,19 @@ void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight,
   PixelFormat = InFormat;
 
   ARGBBuffer = new unsigned char[GetPlaneSize() * 4];
+
+  if (CreateTexture) {
+    if (IsInGameThread()) {
+      CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
+      CameraTexture->UpdateResource();
+      CameraTexture->WaitForPendingInitOrStreaming();
+    } else {
+      UE_LOG(LogCamera, Error,
+             TEXT(
+               "CameraTexture should be created in the game thread. Use CreateTexture2DAsync instead"
+             ));
+    }
+  }
 }
 
 int UAndroidCameraFrame::GetWidth() const {

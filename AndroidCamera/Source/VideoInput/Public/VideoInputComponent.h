@@ -1,7 +1,10 @@
 ﻿#pragma once
+#include <array>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+
+#include "VideoInputEnum.h"
 #include "AndroidCamera/Public/AndroidCameraFrame.h"
 #include "VideoInputModule.h"
 #include "VideoInputComponent.generated.h"
@@ -20,16 +23,23 @@ class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
   GENERATED_BODY()
 
 public:
-  // Step 1.
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   void Initialize(FString path, int64 frameDuration, bool instantStart = false);
 
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   void StartVideo();
 
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  EVideoStatus GetStatus() const;
+
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  FString GetVideoFilePath() const;
 
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   int GetTotalFrameCount() const;
+
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  float GetProgress() const;
 
   UPROPERTY(BlueprintAssignable, Category = VideoInput)
   FOnFrameAvailableDelegateDynamic OnFrameAvailableDynamic;
@@ -45,7 +55,11 @@ protected:
 private:
   void BroadcastImageAvailability(int Idx);
 
-  UAndroidCameraFrame* CameraFrame = nullptr;
+
+  UAndroidCameraFrame* GetCameraFrame();
+  // simple circular buffer
+  // UAndroidCameraFrame* is safe from UE GC as it belongs to this component
+  std::array<UAndroidCameraFrame*, 5> CameraFrames;
 
   // FetchEngine related:
   void FetchLoop();
@@ -77,5 +91,5 @@ private:
   std::condition_variable ConsumeSignalCV;
   std::mutex ConsumeSignalMtx;
   bool CanConsume = false;
-  bool IsStarted = false;
+  EVideoStatus Status = EVideoStatus::NOT_INITIALIZED;
 };

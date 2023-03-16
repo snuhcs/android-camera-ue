@@ -21,7 +21,6 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
     return;
   }
   RequireFetch = true;
-  IsStarted = false;
   // No need to access with mutex because StartVideo writes first before any
   // other function
 
@@ -40,6 +39,7 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
     return;
   }
 
+  // magic numbers
   BufferFrameCnt = 150;
   BatchFrameCnt = BufferFrameCnt * 0.2;
   BufferSize = BufferFrameCnt * W * H;
@@ -48,8 +48,12 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
   RemainingPercent = 0.8;
   FrameDuration = frameDuration;
 
-  CameraFrame = NewObject<UAndroidCameraFrame>(this);
-  CameraFrame->Initialize(W, H, false, PF_R8G8B8A8);
+  for (size_t i = 0; i < CameraFrames.size(); i++) {
+    CameraFrames[i] = NewObject<UAndroidCameraFrame>(this);
+    CameraFrames[i]->Initialize(W, H, false, PF_R8G8B8A8, true);
+  }
+
+  Status = EVideoStatus::NOT_STARTED;
 
   if (instantStart) {
     StartVideo();
@@ -57,23 +61,35 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
 }
 
 void UVideoInputComponent::StartVideo() {
-  if (!IsStarted) {
+  if (EVideoStatus::NOT_STARTED == Status) {
     FetchThread = std::thread([this] { this->FetchLoop(); });
     ConsumeThread = std::thread([this] { this->ConsumeLoop(); });
-    IsStarted = true;
+    Status = EVideoStatus::PLAYING;
   } else {
     UE_LOG(LogVideo, Display, TEXT("Video already started!"));
   }
+}
+
+EVideoStatus UVideoInputComponent::GetStatus() const {
+  return Status;
+}
+
+FString UVideoInputComponent::GetVideoFilePath() const {
+  return VideoFilePath;
 }
 
 int UVideoInputComponent::GetTotalFrameCount() const {
   return TotalFrameCnt;
 }
 
+float UVideoInputComponent::GetProgress() const {
+  return (float)(ConsumeHead) / TotalFrameCnt;
+}
+
 void UVideoInputComponent::KillEngine() {
-  CameraFrame = nullptr;
+  // no need to clear frames, it belongs to the UE4 GC
   KillThread = true;
-  if (IsStarted) {
+  if (Status == EVideoStatus::PLAYING || Status == EVideoStatus::FINISHED) {
     FetchSignalCV.notify_all();
     ConsumeSignalCV.notify_all();
     if (ConsumeThread.joinable()) {
@@ -103,8 +119,7 @@ void UVideoInputComponent::FetchLoop() {
     UE_LOG(LogVideo, Display, TEXT("Fetching frames %d ~ %d"), FetchHead,
            FetchHead + BatchFrameCnt);
     int NumFrames = BatchFrameCnt;
-    if(FetchHead + BatchFrameCnt > TotalFrameCnt)
-    {
+    if (FetchHead + BatchFrameCnt > TotalFrameCnt) {
       NumFrames = TotalFrameCnt - FetchHead;
     }
     if (FVideoInputModule::Get().CallJava_GetNFrames(
@@ -126,6 +141,7 @@ void UVideoInputComponent::FetchLoop() {
     // Terminate FetchThread if FetchEngine fetched all frames
     if (FetchHead >= TotalFrameCnt) {
       UE_LOG(LogVideo, Display, TEXT("Fetched all frames. Closing video..."));
+      Status = EVideoStatus::FINISHED;
       FVideoInputModule::Get().CallJava_CloseVideo();
       return;
     }
@@ -189,6 +205,7 @@ int UVideoInputComponent::FrameToInt(int frame) const {
 
 void UVideoInputComponent::BroadcastImageAvailability(int Idx) {
   if (OnFrameAvailable.IsBound() || OnFrameAvailableDynamic.IsBound()) {
+    UAndroidCameraFrame* CameraFrame = GetCameraFrame();
     CameraFrame->UpdateFrame(&Buffer[FrameToInt(Idx)]);
 
     AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask,
@@ -199,4 +216,11 @@ void UVideoInputComponent::BroadcastImageAvailability(int Idx) {
         [&]() { OnFrameAvailableDynamic.Broadcast(CameraFrame); }, TStatId(),
         nullptr, ENamedThreads::GameThread);
   }
+}
+
+UAndroidCameraFrame* UVideoInputComponent::GetCameraFrame() {
+  static size_t CurrentHead = 0;
+  auto CurrentFrame = CameraFrames[CurrentHead];
+  CurrentHead = (CurrentHead + 1) % CameraFrames.size();
+  return CurrentFrame;
 }
