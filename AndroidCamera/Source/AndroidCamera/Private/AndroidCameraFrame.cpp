@@ -56,15 +56,21 @@ void UAndroidCameraFrame::Initialize(int PreviewWidth, int PreviewHeight,
   ARGBBuffer = new unsigned char[GetPlaneSize() * 4];
 
   if (CreateTexture) {
-    auto handle = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
-        CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
-        CameraTexture->UpdateResource();
-        CameraTexture->WaitForPendingInitOrStreaming();
-      },
-      TStatId(), nullptr,
-      ENamedThreads::GameThread);
-
-    handle->Wait();
+    if (IsInGameThread()) {
+      CameraTexture = UTexture2D::CreateTransient(Width, Height, PixelFormat);
+      CameraTexture->UpdateResource();
+      CameraTexture->WaitForPendingInitOrStreaming();
+    } else {
+      auto handle = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
+          CameraTexture = UTexture2D::CreateTransient(
+              Width, Height, PixelFormat);
+          CameraTexture->UpdateResource();
+          CameraTexture->WaitForPendingInitOrStreaming();
+        },
+        TStatId(), nullptr,
+        ENamedThreads::GameThread);
+      handle->Wait();
+    }
   }
 }
 

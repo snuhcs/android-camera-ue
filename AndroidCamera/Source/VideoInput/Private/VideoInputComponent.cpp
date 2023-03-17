@@ -8,6 +8,10 @@ void UVideoInputComponent::BeginPlay() {
 
 void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   Super::EndPlay(EndPlayReason);
+
+  for (size_t i = 0; i < CameraFrames.size(); i++) {
+    CameraFrames[i]->RemoveFromRoot();
+  }
   KillEngine();
 }
 
@@ -51,6 +55,7 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
   for (size_t i = 0; i < CameraFrames.size(); i++) {
     CameraFrames[i] = NewObject<UAndroidCameraFrame>(this);
     CameraFrames[i]->Initialize(W, H, false, PF_R8G8B8A8, true);
+    CameraFrames[i]->AddToRoot();
   }
 
   Status = EVideoStatus::NOT_STARTED;
@@ -140,10 +145,8 @@ void UVideoInputComponent::FetchLoop() {
 
     // Terminate FetchThread if FetchEngine fetched all frames
     if (FetchHead >= TotalFrameCnt) {
-      BroadcastEndVideo();
       UE_LOG(LogVideo, Display, TEXT("Fetched all frames. Closing video..."));
       Status = EVideoStatus::FINISHED;
-      FVideoInputModule::Get().CallJava_CloseVideo();
       return;
     }
   }
@@ -193,6 +196,7 @@ void UVideoInputComponent::ConsumeLoop() {
     // Terminate ConsumeThread if FetchEngine has consumed all frames
     if (ConsumeHead >= TotalFrameCnt) {
       UE_LOG(LogVideo, Display, TEXT("Consumed all frames"));
+      BroadcastEndVideo();
       return;
     }
   }
