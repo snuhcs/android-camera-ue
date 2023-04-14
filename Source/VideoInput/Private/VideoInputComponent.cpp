@@ -170,7 +170,6 @@ void UVideoInputComponent::ConsumeLoop() {
     int cnt = BatchFrameCnt;
     bool signalSent = false;
     while (cnt > 0) {
-      UE_LOG(LogVideo, Display, TEXT("VideoInput consumer"));
       cnt--;
 
       // Convert to YUV && Trigger Delegate Event
