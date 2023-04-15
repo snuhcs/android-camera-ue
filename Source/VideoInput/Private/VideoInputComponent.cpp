@@ -15,14 +15,14 @@ void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
   KillEngine();
 }
 
-void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
+bool UVideoInputComponent::Initialize(FString path, int64 frameDuration,
                                       bool instantStart) {
   VideoFilePath = path;
   if (!FVideoInputModule::Get().CallJava_LoadVideo(VideoFilePath)) {
     UE_LOG(LogVideo, Display,
            TEXT("LoadVideo failed! Please check video path (%s)"),
            *VideoFilePath);
-    return;
+    return false;
   }
   RequireFetch = true;
   // No need to access with mutex because StartVideo writes first before any
@@ -33,24 +33,23 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
     UE_LOG(
         LogVideo, Display,
         TEXT("Coudn't get frame count of video... Make sure video is loaded"));
-    return;
+    return false;
   }
   W = FVideoInputModule::Get().CallJava_GetVideoWidth();
   H = FVideoInputModule::Get().CallJava_GetVideoHeight();
   if (W < 0 || H < 0) {
     UE_LOG(LogVideo, Display,
            TEXT("Coudn't get video size... Make sure video is loaded"));
-    return;
+    return false;
   }
 
-  // magic numbers
-  BufferFrameCnt = 150;
-  BatchFrameCnt = BufferFrameCnt * 0.2;
-  BufferSize = BufferFrameCnt * W * H;
-  Buffer.resize(BufferSize);
-
-  RemainingPercent = 0.8;
+  Buffer.resize(GetBufferSize());
   FrameDuration = frameDuration;
+  if (FrameDuration <= 0) {
+    UE_LOG(LogVideo, Display,
+           TEXT("Frame duration must be positive!"));
+    return false;
+  }
 
   for (size_t i = 0; i < CameraFrames.size(); i++) {
     CameraFrames[i] = NewObject<UAndroidCameraFrame>(this);
@@ -63,6 +62,7 @@ void UVideoInputComponent::Initialize(FString path, int64 frameDuration,
   if (instantStart) {
     StartVideo();
   }
+  return true;
 }
 
 void UVideoInputComponent::StartVideo() {
@@ -146,7 +146,6 @@ void UVideoInputComponent::FetchLoop() {
     // Terminate FetchThread if FetchEngine fetched all frames
     if (FetchHead >= TotalFrameCnt) {
       UE_LOG(LogVideo, Display, TEXT("Fetched all frames. Closing video..."));
-      Status = EVideoStatus::FINISHED;
       return;
     }
   }
@@ -160,7 +159,6 @@ void UVideoInputComponent::ConsumeLoop() {
       ConsumeSignalCV.wait(ConsumeLock,
                            [this] { return KillThread || CanConsume; });
       CanConsume = false;
-      // ConsumeLock.unlock();
     }
     if (KillThread) {
       return;
@@ -169,12 +167,10 @@ void UVideoInputComponent::ConsumeLoop() {
     // Process
     int cnt = BatchFrameCnt;
     bool signalSent = false;
-    while (cnt > 0) {
+    while (cnt > 0 && ConsumeHead < TotalFrameCnt) {
       cnt--;
 
       // Convert to YUV && Trigger Delegate Event
-      UE_LOG(LogVideo, Display,
-             TEXT("OnImageAvailableDelegate called on frame %d"), ConsumeHead);
       BroadcastImageAvailability(ConsumeHead);
 
       ConsumeHead++;
@@ -196,6 +192,7 @@ void UVideoInputComponent::ConsumeLoop() {
     if (ConsumeHead >= TotalFrameCnt) {
       UE_LOG(LogVideo, Display, TEXT("Consumed all frames"));
       BroadcastEndVideo();
+      Status = EVideoStatus::FINISHED;
       return;
     }
   }
@@ -205,6 +202,10 @@ int UVideoInputComponent::FrameToInt(int frame) const {
   const int rangeStart = frame % BufferFrameCnt * W * H;
   assert(rangeStart < BufferSize);
   return rangeStart;
+}
+
+int UVideoInputComponent::GetBufferSize() const {
+  return BufferFrameCnt * W * H;
 }
 
 void UVideoInputComponent::BroadcastImageAvailability(int Idx) {

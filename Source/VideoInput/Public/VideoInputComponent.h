@@ -31,7 +31,7 @@ class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
 
 public:
   UFUNCTION(BlueprintCallable, Category = VideoInput)
-  void Initialize(FString path, int64 frameDuration, bool instantStart = false);
+  bool Initialize(FString path, int64 frameDuration, bool instantStart = false);
 
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   void StartVideo();
@@ -70,7 +70,7 @@ private:
 
 
   UAndroidCameraFrame* GetCameraFrame();
-  // simple circular buffer
+  // Simple circular buffer
   // UAndroidCameraFrame* is safe from UE GC as it belongs to this component
   std::array<UAndroidCameraFrame*, 10> CameraFrames;
 
@@ -79,16 +79,21 @@ private:
   void ConsumeLoop();
   int FrameToInt(int frame) const;
 
-  // Must be initialized from FetchEngine caller
+  // Video-specific parameters, set by Initialize
   FString VideoFilePath;
   int W, H;
   int TotalFrameCnt;
-  int BatchFrameCnt;
-  int BufferFrameCnt;
-  int BufferSize; // in int
+  long long FrameDuration; // in milliseconds
+
+  static constexpr int BufferFrameCnt = 150;
+  // Fetch thread will fetch `BatchFrameCnt` frames at a time
+  static constexpr int BatchFrameCnt = 30; // 1s
+  // Fetch thread will fetch if remaining frames are less than `BatchFrameCnt * RemainingPercent`
+  static constexpr float RemainingPercent = 0.8f; // between [0 ~ 1]
+
+  // Image pool, reserves memory for `BufferFrameCnt` images
+  int GetBufferSize() const;
   std::vector<int> Buffer;
-  float RemainingPercent;  // between [0 ~ 1]
-  long long FrameDuration; // int milliseconds
 
   int ConsumeHead = 0;
   int FetchHead = 0;
