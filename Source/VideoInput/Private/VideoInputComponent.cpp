@@ -120,16 +120,12 @@ void UVideoInputComponent::FetchLoop() {
     if (KillThread) {
       return;
     }
-
-    UE_LOG(LogVideo, Display, TEXT("Fetching frames %d ~ %d"), FetchHead,
-           FetchHead + BatchFrameCnt);
     int NumFrames = BatchFrameCnt;
     if (FetchHead + BatchFrameCnt > TotalFrameCnt) {
       NumFrames = TotalFrameCnt - FetchHead;
     }
     if (FVideoInputModule::Get().CallJava_GetNFrames(
         NumFrames, W, H, &Buffer[FrameToInt(FetchHead)])) {
-      UE_LOG(LogVideo, Display, TEXT("Successfully fetched frames!"));
       FetchHead += BatchFrameCnt;
     } else {
       UE_LOG(LogVideo, Display, TEXT("Error in fetching frames..."));
