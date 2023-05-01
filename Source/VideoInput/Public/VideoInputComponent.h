@@ -31,7 +31,8 @@ class VIDEOINPUT_API UVideoInputComponent : public UActorComponent {
 
 public:
   UFUNCTION(BlueprintCallable, Category = VideoInput)
-  bool Initialize(FString path, int64 frameDuration, bool instantStart = false);
+  bool Initialize(FString path, int64 frameDuration, bool instantStart = false,
+                  bool requireHandshake = false);
 
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   void StartVideo();
@@ -47,6 +48,14 @@ public:
 
   UFUNCTION(BlueprintCallable, Category = VideoInput)
   float GetProgress() const;
+
+  // This function is called by the client to indicate that it has processed the previous frame
+  // and is ready to receive the next frame from the consumer thread.
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  void SetConsumeReady();
+
+  UFUNCTION(BlueprintCallable, Category = VideoInput)
+  bool RequiresHandshake() const;
 
   UPROPERTY(BlueprintAssignable, Category = VideoInput)
   FOnFrameAvailableDelegateDynamic OnFrameAvailableDynamic;
@@ -104,10 +113,15 @@ private:
 
   std::condition_variable FetchSignalCV;
   std::mutex FetchSignalMtx;
-  bool RequireFetch = false; // Always fetch first few frames at StartVideo
+  bool RequireFetch = false;     // Always fetch first few frames at StartVideo
+  bool RequireHandshake = false; // Always consume when client is ready 
 
   std::condition_variable ConsumeSignalCV;
   std::mutex ConsumeSignalMtx;
   bool CanConsume = false;
   EVideoStatus Status = EVideoStatus::NOT_INITIALIZED;
+
+  std::condition_variable ConsumeReadyCV;
+  std::mutex ConsumeReadyMtx;
+  bool ConsumeReady = false;
 };

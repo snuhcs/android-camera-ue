@@ -16,7 +16,8 @@ void UVideoInputComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
 }
 
 bool UVideoInputComponent::Initialize(FString path, int64 frameDuration,
-                                      bool instantStart) {
+                                      bool instantStart,
+                                      bool requireHandshake) {
   VideoFilePath = path;
   if (!FVideoInputModule::Get().CallJava_LoadVideo(VideoFilePath)) {
     UE_LOG(LogVideo, Display,
@@ -27,6 +28,8 @@ bool UVideoInputComponent::Initialize(FString path, int64 frameDuration,
   RequireFetch = true;
   // No need to access with mutex because StartVideo writes first before any
   // other function
+  RequireHandshake = requireHandshake;
+  ConsumeReady = true;
 
   TotalFrameCnt = FVideoInputModule::Get().CallJava_GetFrameCount();
   if (TotalFrameCnt < 0) {
@@ -89,6 +92,16 @@ int UVideoInputComponent::GetTotalFrameCount() const {
 
 float UVideoInputComponent::GetProgress() const {
   return (float)(ConsumeHead) / TotalFrameCnt;
+}
+
+void UVideoInputComponent::SetConsumeReady() {
+  std::unique_lock<std::mutex> ConsumeLock(ConsumeReadyMtx);
+  ConsumeReady = true;
+  ConsumeReadyCV.notify_one();
+}
+
+bool UVideoInputComponent::RequiresHandshake() const {
+  return RequireHandshake;
 }
 
 void UVideoInputComponent::KillEngine() {
@@ -163,7 +176,14 @@ void UVideoInputComponent::ConsumeLoop() {
     // Process
     int cnt = BatchFrameCnt;
     bool signalSent = false;
-    while (cnt > 0 && ConsumeHead < TotalFrameCnt) {
+    while (!KillThread && (cnt > 0 && ConsumeHead < TotalFrameCnt)) {
+      if (RequireHandshake) {
+        std::unique_lock<std::mutex> ConsumeLock(ConsumeReadyMtx);
+        ConsumeReadyCV.wait(ConsumeLock, [this] {
+          return KillThread || ConsumeReady;
+        });
+        ConsumeReady = false;
+      }
       cnt--;
 
       // Convert to YUV && Trigger Delegate Event
@@ -180,6 +200,7 @@ void UVideoInputComponent::ConsumeLoop() {
         signalSent = true;
         FetchSignalCV.notify_all();
       }
+
       // Sleep to simulate framerate (yield sleep)
       std::this_thread::sleep_for(std::chrono::milliseconds(FrameDuration));
     }
