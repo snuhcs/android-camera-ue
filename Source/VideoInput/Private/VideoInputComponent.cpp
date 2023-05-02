@@ -201,8 +201,10 @@ void UVideoInputComponent::ConsumeLoop() {
         FetchSignalCV.notify_all();
       }
 
-      // Sleep to simulate framerate (yield sleep)
-      std::this_thread::sleep_for(std::chrono::milliseconds(FrameDuration));
+      if (!RequireHandshake) {
+        // Sleep to simulate framerate (yield sleep)
+        std::this_thread::sleep_for(std::chrono::milliseconds(FrameDuration));
+      }
     }
 
     // Terminate ConsumeThread if FetchEngine has consumed all frames
