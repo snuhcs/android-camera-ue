@@ -115,8 +115,8 @@ UTexture2D* UAndroidCameraFrame::GetTexture2D() const {
 
 UAndroidCameraFrame* UAndroidCameraFrame::FromTexture2D(UTexture2D* Texture) {
   CameraTexture = Texture;
-  Height = Texture->GetSizeX();
-  Width = Texture->GetSizeY();
+  Width = Texture->GetSizeX();
+  Height = Texture->GetSizeY();
   return this;
 }
 
