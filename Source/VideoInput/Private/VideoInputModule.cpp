@@ -31,6 +31,7 @@ bool AndroidThunkCpp_GetNFrames(int N, int W, int H, int* outputBuffer) {
     jobject jArr = Env->NewDirectByteBuffer(outputBuffer, N * W * H * 4);
     bool ret = FJavaWrapper::CallBooleanMethod(
         Env, FJavaWrapper::GameActivityThis, Method, N, jArr);
+    Env->DeleteLocalRef(jArr);
     return ret;
   }
   return false;
@@ -105,7 +106,7 @@ void FVideoInputModule::ShutdownModule() {
 
 FVideoInputModule& FVideoInputModule::Get() {
   return *reinterpret_cast<FVideoInputModule*>(
-      FModuleManager::Get().GetModule("VideoInput"));
+    FModuleManager::Get().GetModule("VideoInput"));
 }
 
 bool FVideoInputModule::RegisterComponent(FString VideoPath) {
@@ -147,6 +148,7 @@ int FVideoInputModule::CallJava_GetVideoHeight() {
   UE_LOG(LogVideo, Display, TEXT("Platform isn't ANDROID"));
   return -1;
 }
+
 int FVideoInputModule::CallJava_GetVideoWidth() {
 #if PLATFORM_ANDROID
   return AndroidThunkCpp_GetVideoWidth();
