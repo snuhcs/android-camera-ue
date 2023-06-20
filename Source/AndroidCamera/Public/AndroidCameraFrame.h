@@ -25,11 +25,6 @@ public:
   int GetHeight() const;
 
   unsigned char* GetARGBBuffer() const;
-  UFUNCTION(BlueprintCallable, Category = AndroidCamera)
-  UTexture2D* GetTexture2D() const;
-
-  UFUNCTION(BlueprintCallable, Category = AndroidCamera)
-  UAndroidCameraFrame* FromTexture2D(UPARAM(ref) UTexture2D* Texture);
 
   struct NV12Frame {
     uint8* Y;
@@ -52,13 +47,7 @@ private:
 
   friend class UAndroidCameraComponent;
   friend class UVideoInputComponent;
-
-
-  FUpdateTextureRegion2D* UpdateTextureRegion = nullptr;
-
-  // Mutable temporal member ptrs for lazy update
-  mutable bool IsTextureDirty = false;
-  mutable TWeakObjectPtr<UTexture2D> CameraTexture = nullptr;
+  
   mutable bool IsBufferDirty = false;
   mutable unsigned char* ARGBBuffer = nullptr;
 
